@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\K4os.NatsTransit\K4os.NatsTransit.csproj" />
+  </ItemGroup>
+  
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+  
+</Project>
