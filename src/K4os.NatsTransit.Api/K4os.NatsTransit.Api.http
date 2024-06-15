@@ -1,0 +1,16 @@
+@base = http://localhost:5207
+
+### GET /now
+
+GET {{base}}/now
+Accept: application/json
+
+### Echo
+
+POST {{base}}/echo
+Accept: application/json
+Content-Type: application/json
+
+{
+  "message": "just a message"
+}

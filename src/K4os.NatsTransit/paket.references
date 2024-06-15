@@ -1,0 +1,7 @@
+Microsoft.Extensions.Logging.Abstractions
+Microsoft.Extensions.Hosting.Abstractions
+Microsoft.Extensions.DependencyInjection.Abstractions
+
+NATS.Net
+MediatR
+K4os.Async.Toys

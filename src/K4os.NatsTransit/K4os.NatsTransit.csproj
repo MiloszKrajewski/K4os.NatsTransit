@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
+  
   <PropertyGroup>
-    <TargetFrameworks>net462;netstandard2.0;net5.0;net6.0;net8.0</TargetFrameworks>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
-
-  <Import Project="$(PublicAssemblyProps)"/>
+  
+  <Import Project="$(PublicAssemblyProps)" />
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+  
 </Project>

@@ -7,6 +7,11 @@
   <PropertyGroup>
     <PublicAssemblyProps>$(MSBuildThisFileDirectory)\PublicAssembly.props</PublicAssemblyProps>
   </PropertyGroup>
+  
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

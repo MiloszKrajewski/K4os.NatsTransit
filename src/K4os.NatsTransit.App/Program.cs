@@ -29,6 +29,8 @@ await Execute(
 await app.StopAsync();
 return;
 
+// https://nats-io.github.io/nats.net.v2/documentation/intro.html?tabs=jetstream
+
 //--------------------------------------------------------------------------------------------------
 
 static async Task Execute(
