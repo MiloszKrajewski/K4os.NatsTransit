@@ -31,5 +31,19 @@ public static class WebApplicationExtensions
             ) => Results.Json(await messageBus.Query<TQuery, TResponse>(query))
         ).WithOpenApi();
     }
+    
+    public static void MapCommand<TCommand>(
+        this IEndpointRouteBuilder app, string? path = null)
+        where TCommand: IRequest
+    {
+        app.MapPost(
+            path ?? $"/{typeof(TCommand).Name}",
+            async (
+                [FromBody] TCommand request,
+                [FromServices] IMessageBus messageBus
+            ) => await messageBus.Send(request)
+        ).WithOpenApi();
+    }
+
 
 }

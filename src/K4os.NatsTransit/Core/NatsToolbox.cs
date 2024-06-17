@@ -58,7 +58,7 @@ public class NatsToolbox
         var options = default(NatsSubOpts);
         return _connection.SubscribeAsync(subject, null, deserializer, options, token);
     }
-
+    
     public async Task<IAsyncEnumerable<NatsJSMsg<T>>> ConsumeMany<T>(
         CancellationToken token,
         string stream, string consumer,

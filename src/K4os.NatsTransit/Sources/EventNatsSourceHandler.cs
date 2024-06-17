@@ -9,7 +9,7 @@ namespace K4os.NatsTransit.Sources;
 
 public class EventNatsSourceHandler<TEvent>:
     INatsSourceHandler
-    where TEvent: IRequest
+    where TEvent: INotification
 {
     protected readonly ILogger Log;
     

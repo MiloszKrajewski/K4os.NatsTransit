@@ -39,14 +39,14 @@ builder.Services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
 
 builder.Services.UseNatsMessageBus(
     c => {
-        c.RequestStream("requests", ["requests.>"]);
-        c.RequestConsumer("requests", "default");
-
-        // c.RequestTarget<EchoCommand, EchoResponse>("requests.echo");
-        // c.RequestSource<EchoCommand, EchoResponse>("requests", "default");
+        c.Stream("orders", ["orders.>"]);
         
-        c.QueryTarget<EchoCommand, EchoResponse>("queries.echo");
-        c.QuerySource<EchoCommand, EchoResponse>("queries.>");
+        c.CommandConsumer("orders", null, ["orders.commands.>"]);
+        c.EventConsumer("orders", null, true, ["orders.events.>"]);
+        
+        c.CommandTarget<CreateOrderCommand>("orders.commands.create");
+        c.CommandSource<CreateOrderCommand>("orders", "");
+        
     });
 
 builder.Host.UseSerilog(
@@ -71,6 +71,7 @@ app.UseSwaggerUI();
 
 app.MapGet("/now", () => DateTime.UtcNow).WithOpenApi();
 
-app.MapQuery<EchoCommand, EchoResponse>("echo");
+app.MapCommand<CreateOrderCommand>("order/create");
+app.MapQuery<GetOrderQuery, OrderResponse>("order/query");
 
 app.Run();

@@ -20,7 +20,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     private readonly INatsTargetHandler[] _targets;
     private readonly MessageHandler _handler;
 
-    private TaskCompletionSource _started = new();
+    private readonly TaskCompletionSource _started = new();
     private readonly CancellationTokenSource _cts;
 
     public NatsMessageBus(
@@ -98,6 +98,16 @@ public class NatsMessageBus: IHostedService, IMessageBus
         if (response is null) throw new InvalidOperationException("No response received");
 
         return (TResponse)response;
+    }
+
+    public Task<TEvent> Await<TEvent>(
+        Func<TEvent, bool> predicate, 
+        TimeSpan? timeout = null, 
+        CancellationToken token = default) 
+        where TEvent: INotification
+    {
+        #warning implement me
+        throw new NotImplementedException();
     }
 
     private INatsTargetHandler? FindMatchingTarget<THandler>() =>

@@ -20,9 +20,9 @@ public interface IMessageBusConfigurator
     void RequestSource<TRequest, TResponse>(string stream, string consumer)
         where TRequest: IRequest<TResponse>;
 
-    // void CommandSource<TCommand>(string stream, string subject)
-    //     where TCommand: IRequest;
-    //
-    // void EventSource<TEvent>(string stream, string subject)
-    //     where TEvent: INotification;
+    void CommandSource<TCommand>(string stream, string subject)
+        where TCommand: IRequest;
+    
+    void EventSource<TEvent>(string stream, string subject)
+        where TEvent: INotification;
 }

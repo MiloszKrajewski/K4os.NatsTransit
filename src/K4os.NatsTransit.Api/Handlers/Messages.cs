@@ -4,8 +4,23 @@ using MediatR;
 
 namespace K4os.NatsTransit.Api.Handlers;
 
-public record EchoCommand(string Message): IRequest<EchoResponse>;
+public class CreateOrderCommand: IRequest
+{
+    public Guid RequestId { get; set; }
+}
 
-public record EchoResponse(string Message);
+public class OrderCreatedEvent: INotification
+{
+    public Guid RequestId { get; set; }
+    public Guid OrderId { get; set; }
+}
 
-public record EchoReceived(string Message): INotification;
+public class GetOrderQuery: IRequest<OrderResponse>
+{
+    public Guid OrderId { get; set; }
+}
+
+public class OrderResponse
+{
+    public Guid OrderId { get; set; }
+}

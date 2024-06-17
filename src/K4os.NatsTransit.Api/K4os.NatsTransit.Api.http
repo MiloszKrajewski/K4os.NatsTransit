@@ -5,12 +5,12 @@
 GET {{base}}/now
 Accept: application/json
 
-### Echo
+### CreateOrder
 
-POST {{base}}/echo
+POST {{base}}/order/create
 Accept: application/json
 Content-Type: application/json
 
 {
-  "message": "just a message"
+  "RequestId": "03d5e4c8-a8bb-4249-b625-b53b43dfd0bf"
 }
