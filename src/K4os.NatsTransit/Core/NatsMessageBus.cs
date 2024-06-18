@@ -27,7 +27,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext context,
-        INatsSerializerFactory serializerFactory,
+        IPayloadSerializer payloadSerializer,
         IExceptionSerializer exceptionSerializer,
         MessageHandler handler,
         IEnumerable<INatsContextAction> actions,
@@ -36,7 +36,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     {
         Log = loggerFactory.CreateLogger<NatsMessageBus>();
         var toolbox = _toolbox = new NatsToolbox(
-            loggerFactory, connection, context, serializerFactory, exceptionSerializer);
+            loggerFactory, connection, context, payloadSerializer, exceptionSerializer);
         _handler = handler;
         _actions = actions.ToArray();
         _sources = sources.Select(s => s.CreateHandler(toolbox)).ToArray();

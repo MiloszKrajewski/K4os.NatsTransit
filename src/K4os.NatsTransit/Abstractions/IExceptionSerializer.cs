@@ -11,3 +11,4 @@ public class FakeExceptionSerializer: IExceptionSerializer
     public string Serialize(Exception exception) => exception.Message;
     public Exception Deserialize(string payload) => new(payload);
 }
+
