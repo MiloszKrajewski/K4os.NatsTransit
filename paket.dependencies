@@ -24,6 +24,8 @@ nuget MediatR.Contracts
 nuget Polly
 
 nuget K4os.Async.Toys
+nuget K4os.KnownTypes
+nuget K4os.KnownTypes.SystemTextJson
 
 nuget K4os.Xpovoc.Redis
 nuget K4os.Xpovoc.MediatR

@@ -4,6 +4,7 @@ using K4os.NatsTransit.Extensions;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
+using NATS.Client.JetStream.Models;
 
 namespace K4os.NatsTransit.Core;
 
@@ -36,7 +37,7 @@ public class NatsToolbox
 
     public INatsSerialize<T> Serializer<T>() => _serializerFactory.PayloadSerializer<T>();
     public INatsDeserialize<T> Deserializer<T>() => _serializerFactory.PayloadDeserializer<T>();
-    
+
     public ILogger GetLogger(object component) =>
         _loggerFactory.CreateLogger(component.GetType().GetFriendlyName());
 
@@ -58,7 +59,7 @@ public class NatsToolbox
         var options = default(NatsSubOpts);
         return _connection.SubscribeAsync(subject, null, deserializer, options, token);
     }
-    
+
     public async Task<IAsyncEnumerable<NatsJSMsg<T>>> ConsumeMany<T>(
         CancellationToken token,
         string stream, string consumer,
@@ -67,124 +68,90 @@ public class NatsToolbox
         var subscription = await _jetStream.GetConsumerAsync(stream, consumer, token);
         return subscription.ConsumeAsync(deserializer, null, token);
     }
-
-    public Task Publish<T>(
+    
+    public ValueTask Publish<TResponse, TPayload>(
         CancellationToken token,
-        string subject, T payload,
-        INatsSerialize<T> serializer)
+        string subject, TResponse response,
+        INatsSerialize<TPayload> serializer,
+        IOutboundAdapter<TResponse, TPayload> adapter)
     {
-        var message = new NatsMsg<T> { Subject = subject, Data = payload };
-        return _connection.PublishAsync(message, serializer, null, token).AsTask();
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
+        var payload = adapter.Adapt(subject, ref headers, response);
+        var message = new NatsMsg<TPayload> {
+            Subject = subject, 
+            Headers = headers, 
+            Data = payload
+        };
+        return _connection.PublishAsync(message, serializer, null, token);
     }
     
-    public Task Respond<TRequest, TResponse>(
-        CancellationToken token,
-        NatsMsg<TRequest> request, TResponse response,
-        INatsSerialize<TResponse> serializer)
-    {
-        var replyTo = request.ReplyTo;
-        ArgumentException.ThrowIfNullOrWhiteSpace(replyTo);
-        return Respond(token, replyTo, response, serializer);
-    }
-    
-    public Task Respond<TRequest>(
-        CancellationToken token,
-        NatsMsg<TRequest> request, Exception exception)
-    {
-        var replyTo = request.ReplyTo;
-        ArgumentException.ThrowIfNullOrWhiteSpace(replyTo);
-        return Respond(token, replyTo, exception);
-    }
-    
-    private static string? GetReplyToSubject<T>(NatsJSMsg<T> message) =>
-        message.Headers?.TryGetValue(NatsConstants.ReplyToHeaderName, out var value) ?? false
-            ? value.ToString()
-            : null;
-    
-    public Task Respond<TRequest, TResponse>(
-        CancellationToken token,
-        NatsJSMsg<TRequest> request, TResponse response,
-        INatsSerialize<TResponse> serializer)
-    {
-        var replyTo = GetReplyToSubject(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(replyTo);
-        return Respond(token, replyTo, response, serializer);
-    }
-    
-    public Task Respond<TRequest>(
-        CancellationToken token,
-        NatsJSMsg<TRequest> request, Exception exception)
-    {
-        var replyTo = GetReplyToSubject(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(replyTo);
-        return Respond(token, replyTo, exception);
-    }
-
-    public Task Respond<T>(
-        CancellationToken token,
-        string subject, T payload,
-        INatsSerialize<T> serializer)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-        var message = new NatsMsg<T> { Subject = subject, Data = payload };
-        return _connection.PublishAsync(message, serializer, null, token).AsTask();
-    }
-
-    public Task Respond(
+    public ValueTask Publish(
         CancellationToken token,
         string subject, Exception exception)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         var payload = _exceptionSerializer.Serialize(exception);
-        var headers = new NatsHeaders { { NatsConstants.ErrorHeaderName, payload } };
-        var message = new NatsMsg<object?> { Subject = subject, Headers = headers };
-        return _connection.PublishAsync(message, null, null, token).AsTask();
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
+        var message = new NatsMsg<byte[]> {
+            Subject = subject, 
+            Headers = headers
+        };
+        return _connection.PublishAsync(message, null, null, token);
     }
-
-    public Task Request<T>(
+    
+    public ValueTask<PubAckResponse> Request<TRequest, TPayload>(
         CancellationToken token,
-        string subject, T payload, string replySubject,
-        INatsSerialize<T> serializer)
+        string subject, TRequest request, string replySubject,
+        INatsSerialize<TPayload> serializer,
+        IOutboundAdapter<TRequest, TPayload> adapter)
     {
-        var headers = new NatsHeaders { { NatsConstants.ReplyToHeaderName, replySubject } };
-        var message = new NatsMsg<T> { Subject = subject, Data = payload, Headers = headers };
-        return _connection.PublishAsync(message, serializer, null, token).AsTask();
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.ReplyToHeaderName, replySubject);
+        TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
+        var payload = adapter.Adapt(subject, ref headers, request);
+        return _jetStream.PublishAsync(subject, payload, serializer, null, headers, token);
     }
-
-    public Task<NatsMsg<TResponse>> Query<TRequest, TResponse>(
+    
+    public ValueTask<NatsMsg<TResponsePayload>> Query<TRequest, TRequestPayload, TResponsePayload>(
         CancellationToken token,
         string subject, TRequest request,
-        INatsSerialize<TRequest> serializer,
-        INatsDeserialize<TResponse> deserializer,
+        INatsSerialize<TRequestPayload> serializer,
+        IOutboundAdapter<TRequest, TRequestPayload> outAdapter,
+        INatsDeserialize<TResponsePayload> deserializer,
         TimeSpan timeout)
     {
-        var message = new NatsMsg<TRequest> { Subject = subject, Data = request };
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
+        var payload = outAdapter.Adapt(subject, ref headers, request);
+        var message = new NatsMsg<TRequestPayload> {
+            Subject = subject,
+            Headers = headers,
+            Data = payload,
+        };
         var natsSubOpts = new NatsSubOpts { MaxMsgs = 1, StartUpTimeout = timeout };
         return _connection.RequestAsync(
             message,
             serializer, deserializer,
             null, natsSubOpts,
             token
-        ).AsTask();
+        );
     }
-
-    public T Accept<T>(NatsMsg<T> message)
+    
+    public TMessage Unpack<TPayload, TMessage>(
+        Exception? error, string subject, NatsHeaders? headers, TPayload? data,
+        IInboundAdapter<TPayload, TMessage> adapter)
     {
-        message.EnsureSuccess();
-        var payload = message.Headers?[NatsConstants.ErrorHeaderName].ToString();
-        var exception = payload is null ? null : _exceptionSerializer.Deserialize(payload);
+        error?.Rethrow();
+        var errorText = headers.TryGetError();
+        var exception = errorText is null ? null : _exceptionSerializer.Deserialize(errorText);
         if (exception is not null) throw exception;
-
-        return message.Data!;
+        var response = adapter.Adapt(subject, headers, data.ThrowIfNull());
+        return response;
     }
-
-    public async Task WaitAndKeepAlive<TRequest>(
-        NatsJSMsg<TRequest> message, Task action, CancellationToken token)
-    {
-        await action.KeepAlive(
-            t => message.AckProgressAsync(null, t).AsTask(),
-            NatsConstants.KeepAliveInterval,
-            token);
-        await message.AckAsync(null, token);
-    }
+    
+    private string? GetKnownType<TResponse>(TResponse response) => null;
+    
+    private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) => 
+        value is not null && (headers ??= new NatsHeaders()).TryAdd(key, value);
 }

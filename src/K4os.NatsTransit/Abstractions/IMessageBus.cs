@@ -21,6 +21,8 @@ public interface IMessageBus
         where TRequest: IRequest<TResponse>;
     
     Task<TEvent> Await<TEvent>(
-        Func<TEvent, bool> predicate, TimeSpan? timeout = null, CancellationToken token = default)
+        Func<TEvent, bool> predicate, 
+        TimeSpan? timeout = null, 
+        CancellationToken token = default)
         where TEvent: INotification;
 }

@@ -1,5 +1,8 @@
-﻿using K4os.Async.Toys;
+﻿using System.Buffers;
+using K4os.Async.Toys;
+using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -12,12 +15,27 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
 {
     protected readonly ILogger Log;
     
+    public static INatsDeserialize<IMemoryOwner<byte>> BinaryDeserializer =>
+        NatsRawSerializer<IMemoryOwner<byte>>.Default;
+
+    public static IInboundAdapter<TRequest, TRequest> NullInboundAdapter => 
+        NullInboundAdapter<TRequest>.Default;
+    
     private readonly NatsToolbox _toolbox;
     private readonly string _subject;
     private readonly INatsDeserialize<TRequest> _requestDeserializer;
     private readonly INatsSerialize<TResponse> _responseSerializer;
+    private readonly IInboundAdapter<TRequest>? _inboundAdapter;
+    private readonly IOutboundAdapter<TResponse>? _outboundAdapter;
+    private readonly int _concurrency;
+    private readonly DisposableBag _disposables;
 
-    public record Config(string Subject): INatsSourceConfig
+    public record Config(
+        string Subject,
+        IInboundAdapter<TRequest>? InboundAdapter = null,
+        IOutboundAdapter<TResponse>? OutboundAdapter = null,
+        int Concurrency = 1
+    ): INatsSourceConfig
     {
         public INatsSourceHandler CreateHandler(NatsToolbox toolbox) =>
             new QueryNatsSourceHandler<TRequest, TResponse>(toolbox, this);
@@ -30,30 +48,50 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _subject = config.Subject;
         _requestDeserializer = toolbox.Deserializer<TRequest>();
         _responseSerializer = toolbox.Serializer<TResponse>();
+        _inboundAdapter = config.InboundAdapter;
+        _outboundAdapter = config.OutboundAdapter;
+        _concurrency = config.Concurrency.NotLessThan(1);
+        _disposables = new DisposableBag();
     }
 
-    public IDisposable Subscribe(CancellationToken token, MessageHandler handler) => 
-        Agent.Launch(c => Consume(c, handler), Log, token);
+    public IDisposable Subscribe(CancellationToken token, IMediatorAdapter mediator)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+        var agents = Enumerable
+            .Range(0, _concurrency)
+            .Select(_ => Agent.Launch(c => Consume(c, mediator), Log, cts.Token));
+        _disposables.AddMany(agents);
+        return Disposable.Create(cts.Cancel);
+    }
 
-    private async Task Consume(IAgentContext context, MessageHandler handler)
+    private Task Consume(IAgentContext context, IMediatorAdapter mediator) =>
+        _inboundAdapter is null
+            ? Consume(context, mediator, _requestDeserializer, NullInboundAdapter)
+            : Consume(context, mediator, BinaryDeserializer, _inboundAdapter);
+
+    private async Task Consume<TPayload>(
+        IAgentContext context, 
+        IMediatorAdapter mediator,
+        INatsDeserialize<TPayload> deserializer,
+        IInboundAdapter<TPayload, TRequest> adapter)
     {
         var token = context.Token;
-        var consumer = _toolbox.SubscribeMany(token, _subject, _requestDeserializer);
-        
+        var consumer = _toolbox.SubscribeMany(token, _subject, deserializer);
         await foreach (var message in consumer)
-        {
-            await ConsumeOne(message, handler, token);
-        }
+            await ConsumeOne(token, message, adapter, mediator);
     }
 
-    private async Task ConsumeOne(
-        NatsMsg<TRequest> message, MessageHandler handler, CancellationToken token)
+
+    protected async Task ConsumeOne<TPayload>(
+        CancellationToken token, 
+        NatsMsg<TPayload> message, 
+        IInboundAdapter<TPayload, TRequest> adapter, 
+        IMediatorAdapter mediator)
     {
         try
         {
-            message.EnsureSuccess();
-            var request = message.Data!;
-            var result = TryExecuteHandler(handler, request, token);
+            var request = Unpack(message, adapter);
+            var result = mediator.TryExecuteHandler<TRequest, TResponse>(request, token);
             await TrySendResponse(message, await result, token);
         }
         catch (Exception error)
@@ -62,17 +100,21 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         }
     }
 
-    private async Task TrySendResponse(
-        NatsMsg<TRequest> message, Result result, CancellationToken token)
+    private TRequest Unpack<TPayload>(
+        NatsMsg<TPayload> message, IInboundAdapter<TPayload, TRequest> adapter) => 
+        _toolbox.Unpack(message, adapter);
+
+    private async Task TrySendResponse<TPayload>(
+        NatsMsg<TPayload> message, Result<TResponse> result, CancellationToken token)
     {
         try
         {
-            var responseSent = result switch {
-                { Error: { } e } => _toolbox.Respond(token, message, e),
-                { Response: var r } => _toolbox.Respond(token, message, r!, _responseSerializer),
+            var sent = result switch {
+                { Error: { } e } => SendResponse(token, _toolbox, message, e).AsTask(),
+                { Value: { } r } => SendResponse(token, _toolbox, message, r).AsTask(),
                 _ => Task.CompletedTask
             };
-            await responseSent;
+            await sent;
         }
         catch (Exception error)
         {
@@ -80,21 +122,24 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         }
     }
 
-    public record Result(TResponse? Response, Exception? Error);
+    private ValueTask SendResponse<TPayload>(
+        CancellationToken token,
+        NatsToolbox toolbox,
+        NatsMsg<TPayload> request,
+        TResponse response) =>
+        _outboundAdapter is null
+            ? toolbox.Respond(token, request, response, _responseSerializer)
+            : toolbox.Respond(token, request, response, _outboundAdapter);
+    
+    private ValueTask SendResponse<TPayload>(
+        CancellationToken token,
+        NatsToolbox toolbox,
+        NatsMsg<TPayload> request,
+        Exception response) =>
+        toolbox.Respond(token, request, response);
 
-    private static async Task<Result> TryExecuteHandler(
-        MessageHandler handler, TRequest request, CancellationToken token)
+    public void Dispose()
     {
-        try
-        {
-            var response = await Task.Run(() => handler(request, token), token);
-            return new Result((TResponse?)response, null);
-        }
-        catch (Exception error)
-        {
-            return new Result(default, error);
-        }
+        _disposables.Dispose();
     }
-
-    public void Dispose() { }
 }

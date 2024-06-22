@@ -3,5 +3,5 @@ Microsoft.Extensions.Hosting.Abstractions
 Microsoft.Extensions.DependencyInjection.Abstractions
 
 NATS.Net
-MediatR
+MediatR.Contracts
 K4os.Async.Toys

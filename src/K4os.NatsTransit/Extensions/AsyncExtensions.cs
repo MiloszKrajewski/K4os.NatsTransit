@@ -2,9 +2,17 @@
 
 public static class AsyncExtensions
 {
+    public static Task KeepAlive<TTask>(
+        this Task response,
+        Func<CancellationToken, TTask> keepAlive, 
+        TimeSpan keepAliveInterval,
+        CancellationToken token)
+        where TTask: Task =>
+        response.KeepAlive(t => new ValueTask(keepAlive(t)), keepAliveInterval, token);
+
     public static async Task KeepAlive(
         this Task response,
-        Func<CancellationToken, Task> keepAlive, 
+        Func<CancellationToken, ValueTask> keepAlive, 
         TimeSpan keepAliveInterval,
         CancellationToken token)
     {

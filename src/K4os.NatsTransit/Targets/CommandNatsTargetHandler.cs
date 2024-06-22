@@ -1,11 +1,12 @@
-﻿using K4os.NatsTransit.Core;
+﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Core;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Targets;
 
-public class CommandNatsTargetHandler<TCommand>: 
+public class CommandNatsTargetHandler<TCommand>:
     NatsTargetHandler<TCommand>
     where TCommand: IRequest
 {
@@ -14,8 +15,12 @@ public class CommandNatsTargetHandler<TCommand>:
     private readonly string _subject;
     private readonly NatsToolbox _toolbox;
     private readonly INatsSerialize<TCommand> _serializer;
+    private readonly IOutboundAdapter<TCommand>? _adapter;
 
-    public record Config(string Subject): INatsTargetConfig
+    public record Config(
+        string Subject,
+        IOutboundAdapter<TCommand>? Adapter = null
+    ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>
             new CommandNatsTargetHandler<TCommand>(toolbox, this);
@@ -27,8 +32,17 @@ public class CommandNatsTargetHandler<TCommand>:
         _toolbox = toolbox;
         _subject = config.Subject;
         _serializer = toolbox.Serializer<TCommand>();
+        _adapter = config.Adapter;
     }
 
-    public override Task Handle(CancellationToken token, TCommand command) => 
-        _toolbox.Publish(token, _subject, command, _serializer);
+    public override Task Handle(CancellationToken token, TCommand command) =>
+        _adapter is null
+            ? Handle(token, command, _serializer, NullAdapter)
+            : Handle(token, command, BinarySerializer, _adapter);
+
+    public Task Handle<TPayload>(
+        CancellationToken token, TCommand command,
+        INatsSerialize<TPayload> serializer,
+        IOutboundAdapter<TCommand, TPayload> adapter) =>
+        _toolbox.Publish(token, _subject, command, serializer, adapter).AsTask();
 }

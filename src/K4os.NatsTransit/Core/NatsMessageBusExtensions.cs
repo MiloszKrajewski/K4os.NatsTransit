@@ -1,5 +1,4 @@
 ﻿using K4os.NatsTransit.Abstractions;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -22,11 +21,9 @@ public static class NatsMessageBusExtensions
                 p.GetRequiredService<INatsJSContext>(),
                 p.GetRequiredService<INatsSerializerFactory>(),
                 p.GetRequiredService<IExceptionSerializer>(),
-                p.GetRequiredService<IMediator>().Send
-            ));
+                p.GetRequiredService<IMediatorAdapter>()));
         services.AddSingleton<IMessageBus>(p => p.GetRequiredService<NatsMessageBus>());
         services.AddHostedService<NatsMessageBus>(p => p.GetRequiredService<NatsMessageBus>());
         return services;
     }
 }
-

@@ -18,7 +18,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     private readonly INatsContextAction[] _actions;
     private readonly INatsSourceHandler[] _sources;
     private readonly INatsTargetHandler[] _targets;
-    private readonly MessageHandler _handler;
+    private readonly IMediatorAdapter _mediator;
 
     private readonly TaskCompletionSource _started = new();
     private readonly CancellationTokenSource _cts;
@@ -29,7 +29,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
         IExceptionSerializer exceptionSerializer,
-        MessageHandler handler,
+        IMediatorAdapter mediator,
         IEnumerable<INatsContextAction> actions,
         IEnumerable<INatsTargetConfig> targets,
         IEnumerable<INatsSourceConfig> sources)
@@ -37,7 +37,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         Log = loggerFactory.CreateLogger<NatsMessageBus>();
         var toolbox = _toolbox = new NatsToolbox(
             loggerFactory, connection, context, serializerFactory, exceptionSerializer);
-        _handler = handler;
+        _mediator = mediator;
         _actions = actions.ToArray();
         _sources = sources.Select(s => s.CreateHandler(toolbox)).ToArray();
         _targets = targets.Select(s => s.CreateHandler(toolbox)).ToArray();
@@ -52,22 +52,28 @@ public class NatsMessageBus: IHostedService, IMessageBus
         throw new TimeoutException("Service bus has not been started yet");
     }
 
-    public Task Send<TCommand>(
+    public async Task Send<TCommand>(
         TCommand command, CancellationToken token = default)
         where TCommand: IRequest
     {
         WaitForStartup();
         
-        throw new NotImplementedException();
+        var target = FindMatchingTarget<CommandNatsTargetHandler<TCommand>>();
+        if (target is null) throw new InvalidOperationException("No target found for message");
+
+        await target.Handle(token, command);
     }
 
-    public Task Publish<TEvent>(
+    public async Task Publish<TEvent>(
         TEvent @event, CancellationToken token = default)
         where TEvent: INotification
     {
         WaitForStartup();
         
-        throw new NotImplementedException();
+        var target = FindMatchingTarget<EventNatsTargetHandler<TEvent>>();
+        if (target is null) throw new InvalidOperationException("No target found for message");
+
+        await target.Handle(token, @event);
     }
 
     public async Task<TResponse> Query<TQuery, TResponse>(
@@ -126,7 +132,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
 
             foreach (var source in _sources)
             {
-                _ = source.Subscribe(token, _handler);
+                _ = source.Subscribe(token, _mediator);
             }
 
             _started.TrySetResult();

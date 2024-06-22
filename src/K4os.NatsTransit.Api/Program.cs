@@ -1,10 +1,14 @@
 using System.Reflection;
 using System.Text.Json;
+using K4os.KnownTypes;
+using K4os.KnownTypes.SystemTextJson;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Api.Configuration;
 using K4os.NatsTransit.Api.Extensions;
 using K4os.NatsTransit.Api.Handlers;
+using K4os.NatsTransit.Api.Services;
 using K4os.NatsTransit.Core;
+using MediatR;
 using Microsoft.Extensions.Options;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
@@ -13,9 +17,16 @@ using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var typesRegistry = new KnownTypesRegistry();
+typesRegistry.RegisterAssembly<Program>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddMediatR(c => c.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+builder.Services.AddMediatR(
+    c => {
+        c.AddOpenBehavior(typeof(RequestMonitor<,>));
+        c.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+    });
 
 builder.Services.Configure<NatsSettings>(builder.Configuration.GetSection("Nats"));
 
@@ -33,20 +44,25 @@ builder.Services.AddSingleton<NatsConnection>();
 builder.Services.AddSingleton<NatsJSContext>();
 builder.Services.AddSingleton<INatsConnection, NatsConnection>();
 builder.Services.AddSingleton<INatsJSContext, NatsJSContext>();
-builder.Services.AddSingleton<JsonSerializerOptions>(_ => new JsonSerializerOptions());
+builder.Services.AddSingleton<JsonSerializerOptions>(
+    _ => new JsonSerializerOptions {
+        TypeInfoResolver = typesRegistry.CreateJsonTypeInfoResolver()
+    });
 builder.Services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
 builder.Services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
 
 builder.Services.UseNatsMessageBus(
     c => {
-        c.Stream("orders", ["orders.>"]);
-        
-        c.CommandConsumer("orders", null, ["orders.commands.>"]);
-        c.EventConsumer("orders", null, true, ["orders.events.>"]);
-        
         c.CommandTarget<CreateOrderCommand>("orders.commands.create");
-        c.CommandSource<CreateOrderCommand>("orders", "");
+        c.EventTarget<OrderCreatedEvent>("orders.events.created");
+
+        c.Stream("orders", ["orders.>"]);
+
+        c.CommandConsumer("orders", "commands", ["orders.commands.>"]);
+        c.EventConsumer("orders", "events", true, ["orders.events.>"]);
         
+        c.CommandSource<IRequest>("orders", "commands");
+        c.EventSource<INotification>("orders", "events");
     });
 
 builder.Host.UseSerilog(
@@ -71,7 +87,7 @@ app.UseSwaggerUI();
 
 app.MapGet("/now", () => DateTime.UtcNow).WithOpenApi();
 
-app.MapCommand<CreateOrderCommand>("order/create");
-app.MapQuery<GetOrderQuery, OrderResponse>("order/query");
+app.MapCommand<CreateOrderCommand>("orders/create");
+app.MapQuery<GetOrderQuery, OrderResponse>("orders/query");
 
 app.Run();

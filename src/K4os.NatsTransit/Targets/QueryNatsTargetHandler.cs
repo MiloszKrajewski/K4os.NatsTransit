@@ -1,9 +1,12 @@
-﻿using K4os.NatsTransit.Core;
+﻿using System.Diagnostics.CodeAnalysis;
+using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Core;
 using MediatR;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Targets;
 
+[SuppressMessage("Design", "CA1068:CancellationToken parameters must come last")]
 public class QueryNatsTargetHandler<TRequest, TResponse>:
     NatsTargetHandler<TRequest, TResponse>
     where TRequest: IRequest<TResponse>
@@ -13,8 +16,15 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
     private readonly TimeSpan _timeout;
     private readonly INatsSerialize<TRequest> _serializer;
     private readonly INatsDeserialize<TResponse> _deserializer;
+    private readonly IOutboundAdapter<TRequest>? _requestAdapter;
+    private readonly IInboundAdapter<TResponse>? _responseAdapter;
 
-    public record Config(string Subject, TimeSpan? Timeout = null): INatsTargetConfig
+    public record Config(
+        string Subject,
+        TimeSpan? Timeout = null,
+        IOutboundAdapter<TRequest>? RequestAdapter = null,
+        IInboundAdapter<TResponse>? ResponseAdapter = null
+    ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>
             new QueryNatsTargetHandler<TRequest, TResponse>(toolbox, this);
@@ -27,14 +37,41 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         _toolbox = toolbox;
         _serializer = toolbox.Serializer<TRequest>();
         _deserializer = toolbox.Deserializer<TResponse>();
+        _requestAdapter = config.RequestAdapter;
+        _responseAdapter = config.ResponseAdapter;
     }
 
     // https://github.com/nats-io/nats.py/discussions/221
 
-    public override async Task<TResponse?> Handle(CancellationToken token, TRequest request)
+    public override Task<TResponse?> Handle(CancellationToken token, TRequest request) =>
+        (_requestAdapter, _responseAdapter) switch {
+            (null, null) => Handle(
+                token, request, 
+                _serializer, NullRequestAdapter, 
+                _deserializer, NullResponseAdapter),
+            ({ } requestAdapter, null) => Handle(
+                token, request, 
+                BinarySerializer, requestAdapter, 
+                _deserializer, NullResponseAdapter),
+            (null, { } responseAdapter) => Handle(
+                token, request, 
+                _serializer, NullRequestAdapter, 
+                BinaryDeserializer, responseAdapter),
+            ({ } requestAdapter, { } responseAdapter) => Handle(
+                token, request, 
+                BinarySerializer, requestAdapter, 
+                BinaryDeserializer, responseAdapter),
+        };
+    
+    public async Task<TResponse?> Handle<TRequestPayload, TResponsePayload>(
+        CancellationToken token, TRequest request,
+        INatsSerialize<TRequestPayload> serializer,
+        IOutboundAdapter<TRequest, TRequestPayload> outboundAdapter,
+        INatsDeserialize<TResponsePayload> deserializer,
+        IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
     {
         var response = await _toolbox.Query(
-            token, _subject, request, _serializer, _deserializer, _timeout);
-        return _toolbox.Accept(response);
+            token, _subject, request, serializer, outboundAdapter, deserializer, _timeout);
+        return _toolbox.Unpack(response, inboundAdapter);
     }
 }

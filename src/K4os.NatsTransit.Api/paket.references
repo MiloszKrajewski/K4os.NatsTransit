@@ -14,3 +14,5 @@ NATS.Net
 MediatR
 Polly
 K4os.Async.Toys
+K4os.KnownTypes
+K4os.KnownTypes.SystemTextJson

@@ -7,7 +7,7 @@ Accept: application/json
 
 ### CreateOrder
 
-POST {{base}}/order/create
+POST {{base}}/orders/create
 Accept: application/json
 Content-Type: application/json
 
