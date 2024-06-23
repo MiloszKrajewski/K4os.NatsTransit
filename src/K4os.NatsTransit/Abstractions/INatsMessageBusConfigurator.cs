@@ -5,20 +5,14 @@ namespace K4os.NatsTransit.Abstractions;
 public interface INatsMessageBusConfigurator
 {
     void Application(string name);
+    
     void Stream(string stream, string[] subjects);
 
-    void RequestConsumer(
-        string stream, string? consumer = null,
-        string[]? subjects = null);
+    void Consumer(
+        string stream, string consumer, string[]? subjects = null);
 
-    void CommandConsumer(
-        string stream, string? consumer = null,
-        string[]? subjects = null);
-
-    void EventConsumer(
-        string stream, string? consumer = null, 
-        bool applicationSuffix = true,
-        string[]? subjects = null);
+    void Consumer(
+        string stream, string consumer, bool applicationSuffix, string[]? subjects = null);
 
     void QueryTarget<TRequest, TResponse>(
         string subject,
@@ -43,6 +37,12 @@ public interface INatsMessageBusConfigurator
         string subject,
         IOutboundAdapter<TEvent>? outboundAdapter = null)
         where TEvent: INotification;
+    
+    void EventListener<TEvent>(
+        string subject, 
+        IInboundAdapter<TEvent>? inboundAdapter = null,
+        int concurrency = 1)
+        where TEvent: INotification;
 
     void QuerySource<TRequest, TResponse>(
         string subject,
@@ -54,6 +54,7 @@ public interface INatsMessageBusConfigurator
     void RequestSource<TRequest, TResponse>(
         string stream,
         string consumer,
+        bool applicationSuffix = true,
         IInboundAdapter<TRequest>? inboundAdapter = null,
         IOutboundAdapter<TResponse>? outboundAdapter = null,
         int concurrency = 1)
@@ -61,6 +62,7 @@ public interface INatsMessageBusConfigurator
 
     void CommandSource<TCommand>(
         string stream, string consumer,
+        bool applicationSuffix = false,
         IInboundAdapter<TCommand>? inboundAdapter = null,
         int concurrency = 1)
         where TCommand: IRequest;

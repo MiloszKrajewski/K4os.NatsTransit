@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
 using MediatR;
 
@@ -57,8 +58,18 @@ public class ScopedMessageDispatcher: IMessageDispatcher
                 await mediator.Publish(notification, token);
                 return null;
             default:
-                throw new NotSupportedException(
-                    $"Unsupported message type: {typeName}");
+                return ImplementsQuery(message.GetType())
+                    ? await mediator.Send(message, token)
+                    : throw new NotSupportedException($"Unsupported message type: {typeName}");
         }
     }
+
+    private readonly ConcurrentDictionary<Type, bool> _isQueryCache = new();
+
+    private bool ImplementsQuery(Type type) =>
+        _isQueryCache.GetOrAdd(type, static t => ImplementsQueryImpl(t));
+
+    private static bool ImplementsQueryImpl(Type messageType) =>
+        messageType.GetInterfaces().Any(
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>));
 }

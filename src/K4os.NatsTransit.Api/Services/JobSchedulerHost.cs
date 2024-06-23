@@ -2,12 +2,12 @@
 
 namespace K4os.NatsTransit.Api.Services;
 
-public class JonSchedulerHost: IHostedService
+public class JobSchedulerHost: IHostedService
 {
     private readonly IServiceProvider _provider;
     private IJobScheduler? _scheduler;
 
-    public JonSchedulerHost(IServiceProvider provider)
+    public JobSchedulerHost(IServiceProvider provider)
     {
         _provider = provider;
     }

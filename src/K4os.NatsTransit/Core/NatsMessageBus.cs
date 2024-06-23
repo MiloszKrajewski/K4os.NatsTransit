@@ -1,4 +1,5 @@
-﻿using K4os.NatsTransit.Abstractions;
+﻿using System.Diagnostics.CodeAnalysis;
+using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using Microsoft.Extensions.Hosting;
@@ -35,7 +36,9 @@ public class NatsMessageBus: IHostedService, IMessageBus
     {
         Log = loggerFactory.CreateLogger<NatsMessageBus>();
         var toolbox = _toolbox = new NatsToolbox(
-            loggerFactory, connection, context, serializerFactory, exceptionSerializer);
+            loggerFactory,
+            connection, context,
+            serializerFactory, exceptionSerializer);
         _mediator = mediator;
         _actions = actions.ToArray();
         _sources = sources.Select(s => s.CreateHandler(toolbox)).ToArray();
@@ -45,12 +48,12 @@ public class NatsMessageBus: IHostedService, IMessageBus
 
     public void WaitForStartup()
     {
-        if (_started.Task.IsCompletedSuccessfully) 
+        if (_started.Task.IsCompletedSuccessfully)
             return;
 
         throw new TimeoutException("Service bus has not been started yet");
     }
-    
+
     public Task<object?> Dispatch(object message, CancellationToken token = default)
     {
         ArgumentNullException.ThrowIfNull(message, nameof(message));
@@ -58,22 +61,38 @@ public class NatsMessageBus: IHostedService, IMessageBus
         return FindTarget(message).Handle(token, message);
     }
 
-    public Task<object?> Await(
-        Func<object, bool> predicate, 
-        TimeSpan? timeout = null, 
+    [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
+    public async Task<object?> Await(
+        Func<object, bool> predicate,
+        TimeSpan? timeout = null,
         CancellationToken token = default)
     {
-        #warning implement me
-        throw new NotImplementedException();
+        WaitForStartup();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
+        var tcs = new TaskCompletionSource<object?>();
+        var delay = Task.Delay(timeout ?? NatsConstants.ResponseTimeout, cts.Token);
+        var subscription = _toolbox.Events.Subscribe(new EventCapture(predicate, tcs));
+        try
+        {
+            var task = tcs.Task;
+            var done = await Task.WhenAny(delay, task);
+            if (done == delay) throw new TimeoutException("Waiting for event timed out");
+            return await task;
+        }
+        finally
+        {
+            subscription.Dispose();
+            cts.Cancel();
+        }
     }
-    
+
     private INatsTargetHandler FindTarget(object command)
     {
         var commandType = command.GetType();
         var candidates = _targets
             .Where(t => t.CanHandleType(commandType))
             .ToArray();
-        return candidates.FirstOrDefault(t => t.CanHandle(null, command)) ?? 
+        return candidates.FirstOrDefault(t => t.CanHandle(null, command)) ??
             throw new InvalidOperationException($"No target found for message {commandType.Name}");
     }
 

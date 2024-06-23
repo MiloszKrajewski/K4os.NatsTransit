@@ -45,19 +45,16 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     private void ContextAction(Func<INatsJSContext, Task> action) =>
         _actions.Add(new NatsContextAction(t => action(t.JetStream)));
 
-    private void ContextAction(Func<INatsJSContext, ValueTask> action) =>
-        ContextAction(js => action(js).AsTask());
-
     private void ContextAction<T>(Func<INatsJSContext, ValueTask<T>> action) =>
         ContextAction(js => action(js).AsTask());
 
     public void Stream(string stream, string[] subjects) =>
         ContextAction(js => js.CreateStreamAsync(new StreamConfig(stream, subjects)));
-
+    
     private void Consumer(
-        string stream, string consumer, bool applicationSuffix, string[]? subjects = null)
+        string stream, string consumer, string? suffix = null, string[]? subjects = null)
     {
-        consumer = FixEventConsumerName(consumer, applicationSuffix);
+        consumer = suffix is null ? consumer : $"{consumer}-{suffix}";
         ContextAction(
             context => context.CreateOrUpdateConsumerAsync(
                 stream, new ConsumerConfig {
@@ -68,24 +65,14 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
                     AckWait = NatsConstants.AckTimeout,
                 }));
     }
-
-    private string FixEventConsumerName(string consumer, bool applicationSuffix) =>
-        applicationSuffix ? $"{consumer}-{_applicationName}" : consumer;
-
-    public void RequestConsumer(
-        string stream, string? consumer = null,
-        string[]? subjects = null) =>
-        Consumer(stream, consumer ?? "requests", false, subjects);
-
-    public void CommandConsumer(
-        string stream, string? consumer = null,
-        string[]? subjects = null) =>
-        Consumer(stream, consumer ?? "commands", false, subjects);
-
-    public void EventConsumer(
-        string stream, string? consumer = null, bool applicationSuffix = true,
-        string[]? subjects = null) =>
-        Consumer(stream, consumer ?? "events", applicationSuffix, subjects);
+    
+    public void Consumer(
+        string stream, string consumer, string[]? subjects = null) =>
+        Consumer(stream, consumer, null, subjects);
+    
+    public void Consumer(
+        string stream, string consumer, bool applicationSuffix, string[]? subjects = null) =>
+        Consumer(stream, consumer, applicationSuffix ? _applicationName : null, subjects);
 
     public void QueryTarget<TRequest, TResponse>(
         string subject,
@@ -132,22 +119,26 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void RequestSource<TRequest, TResponse>(
         string stream,
         string consumer,
+        bool applicationSuffix = false,
         IInboundAdapter<TRequest>? inboundAdapter = null,
         IOutboundAdapter<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
             new RequestNatsSourceHandler<TRequest, TResponse>.Config(
-                stream, consumer, inboundAdapter, outboundAdapter, concurrency));
+                stream, ConsumerName(consumer, applicationSuffix), 
+                inboundAdapter, outboundAdapter, concurrency));
 
     public void CommandSource<TCommand>(
         string stream, string consumer,
+        bool applicationSuffix = false,
         IInboundAdapter<TCommand>? inboundAdapter = null,
         int concurrency = 1)
         where TCommand: IRequest =>
         _sources.Add(
             new CommandNatsSourceHandler<TCommand>.Config(
-                stream, consumer, inboundAdapter, concurrency));
+                stream, ConsumerName(consumer, applicationSuffix), 
+                inboundAdapter, concurrency));
 
     public void EventSource<TEvent>(
         string stream, string consumer,
@@ -157,7 +148,19 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     ) where TEvent: INotification =>
         _sources.Add(
             new EventNatsSourceHandler<TEvent>.Config(
-                stream, FixEventConsumerName(consumer, applicationSuffix), 
-                inboundAdapter,
-                concurrency));
+                stream, ConsumerName(consumer, applicationSuffix), 
+                inboundAdapter, concurrency));
+
+    public void EventListener<TEvent>(
+        string subject,
+        IInboundAdapter<TEvent>? inboundAdapter = null,
+        int concurrency = 1) where TEvent: INotification =>
+        _sources.Add(
+            new EventNatsListenerHandler<TEvent>.Config(
+                subject, inboundAdapter, concurrency));
+
+
+    private string ConsumerName(string consumer, bool applicationSuffix) => 
+        applicationSuffix ? $"{consumer}-{_applicationName}" : consumer;
 }
+

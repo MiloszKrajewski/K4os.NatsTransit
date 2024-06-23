@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace K4os.NatsTransit.Api.Extensions;
 
-public static class WebApplicationExtensions
+public static class EndpointMappingExtensions
 {
     public static void MapRequest<TRequest, TResponse>(
         this IEndpointRouteBuilder app, string? path = null)

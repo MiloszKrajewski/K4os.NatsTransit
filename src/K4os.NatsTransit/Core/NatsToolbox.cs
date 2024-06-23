@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Extensions;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
@@ -16,6 +18,7 @@ public class NatsToolbox
     private readonly INatsJSContext _jetStream;
     private readonly INatsSerializerFactory _serializerFactory;
     private readonly IExceptionSerializer _exceptionSerializer;
+    private readonly ObservableEvent<INotification> _eventObserver;
 
     public NatsToolbox(
         ILoggerFactory loggerFactory,
@@ -29,6 +32,7 @@ public class NatsToolbox
         _jetStream = jetStream;
         _serializerFactory = serializerFactory;
         _exceptionSerializer = exceptionSerializer;
+        _eventObserver = new ObservableEvent<INotification>();
     }
 
     public ILoggerFactory LoggerFactory => _loggerFactory;
@@ -137,6 +141,41 @@ public class NatsToolbox
             token
         );
     }
+    
+    public ValueTask Respond<TRequest, TResponse, TPayload>(
+        CancellationToken token,
+        NatsMsg<TRequest> request, TResponse response,
+        INatsSerialize<TPayload> serializer,
+        IOutboundAdapter<TResponse, TPayload> adapter)
+    {
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
+        var payload = adapter.Adapt(request.Subject, ref headers, response);
+        var message = new NatsMsg<TPayload> {
+            Headers = headers, 
+            Data = payload
+        };
+        return request.ReplyAsync(message, serializer, null, token);
+    }
+
+    public ValueTask Respond<TRequest>(
+        CancellationToken token,
+        NatsMsg<TRequest> request, Exception exception)
+    {
+        var payload = _exceptionSerializer.Serialize(exception);
+        NatsHeaders? headers = default;
+        TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
+        var message = new NatsMsg<byte[]> {
+            Headers = headers
+        };
+        return request.ReplyAsync(message, null, null, token);
+    }
+    
+    public void OnEvent<TEvent>(TEvent @event) 
+        where TEvent: INotification => 
+        _eventObserver.OnNext(@event);
+
+    public IObservable<INotification> Events => _eventObserver;
     
     public TMessage Unpack<TPayload, TMessage>(
         Exception? error, string subject, NatsHeaders? headers, TPayload? data,

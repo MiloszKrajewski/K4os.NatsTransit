@@ -12,5 +12,15 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "RequestId": "03d5e4c8-a8bb-4249-b625-b53b43dfd0bf"
+  "request_id": "03d5e4c8-a8bb-4249-b625-b53b43dfd0bf"
+}
+
+### GetOrderQuery
+
+POST {{base}}/orders/query
+Accept: application/json
+Content-Type: application/json
+
+{
+  "order_id": "aedf5acc-4b8c-4261-9090-ee549ef936be"
 }

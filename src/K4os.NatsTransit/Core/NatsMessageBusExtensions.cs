@@ -50,7 +50,7 @@ public static class NatsMessageBusExtensions
         var response = await bus.Await(o => o is TEvent e && predicate(e), timeout, token);
         return response as TEvent ?? throw NoResponseException<TEvent>();
     }
-
+    
     private static Exception InvalidResponseException<TQuery, TResponse>(Type actual)
         where TQuery: IRequest<TResponse> =>
         new InvalidOperationException(
