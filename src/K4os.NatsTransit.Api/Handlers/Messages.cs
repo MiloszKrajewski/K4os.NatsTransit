@@ -18,6 +18,18 @@ public class OrderCreatedEvent: INotification
     public Guid OrderId { get; set; }
 }
 
+[KnownTypeAlias("CancelOrderCommand.v1")]
+public class CancelOrderCommand: IRequest
+{
+    public Guid OrderId { get; set; }
+}
+
+[KnownTypeAlias("OrderCancelledEvent.v1")]
+public class OrderCancelledEvent: INotification
+{
+    public Guid OrderId { get; set; }
+}
+
 [KnownTypeAlias("GetOrderQuery.v1")]
 public class GetOrderQuery: IRequest<OrderResponse>
 {

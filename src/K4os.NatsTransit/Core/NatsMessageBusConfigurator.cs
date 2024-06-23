@@ -24,7 +24,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
         IExceptionSerializer exceptionSerializer,
-        IMediatorAdapter mediator) =>
+        IMessageDispatcher mediator) =>
         new(
             loggerFactory,
             connection, context,

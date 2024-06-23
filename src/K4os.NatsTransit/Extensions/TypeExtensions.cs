@@ -23,6 +23,13 @@ internal static class TypeExtensions
 	/// <returns><c>true</c> if child type inherits (or implements) from parent; <c>false</c> otherwise</returns>
 	public static bool InheritsFrom(this Type child, Type parent) =>
 		parent.IsAssignableFrom(child);
+	
+	/// <summary>Checks if child type inherits (or implements) from parent.</summary>
+	/// <param name="child">The child.</param>
+	/// <typeparam name="TParent">Potential parent class.</typeparam>
+	/// <returns><c>true</c> if child type inherits (or implements) from parent; <c>false</c> otherwise</returns>
+	public static bool InheritsFrom<TParent>(this Type child) =>
+		typeof(TParent).IsAssignableFrom(child);
 
 	/// <summary>Calculates distance between child and parent type.</summary>
 	/// <param name="child">The child.</param>

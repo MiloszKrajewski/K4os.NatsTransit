@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Core;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

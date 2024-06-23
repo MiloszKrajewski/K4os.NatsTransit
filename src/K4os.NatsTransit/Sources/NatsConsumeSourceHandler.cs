@@ -47,7 +47,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
     
     protected NatsToolbox Toolbox => _toolbox;
 
-    public IDisposable Subscribe(CancellationToken token, IMediatorAdapter mediator)
+    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         var agents = Enumerable
@@ -57,7 +57,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
         return Disposable.Create(cts.Cancel);
     }
 
-    private Task Consume(IAgentContext context, IMediatorAdapter mediator)
+    private Task Consume(IAgentContext context, IMessageDispatcher mediator)
     {
         var token = context.Token;
         return _adapter is null
@@ -67,7 +67,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
 
     private async Task Consume<TPayload>(
         CancellationToken token,
-        IMediatorAdapter mediator,
+        IMessageDispatcher mediator,
         INatsDeserialize<TPayload> deserializer,
         IInboundAdapter<TPayload, TMessage> adapter)
     {
@@ -79,12 +79,12 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
     protected virtual async Task ConsumeOne<TPayload>(
         CancellationToken token, NatsJSMsg<TPayload> message,
         IInboundAdapter<TPayload, TMessage> adapter,
-        IMediatorAdapter mediator)
+        IMessageDispatcher mediator)
     {
         try
         {
             var content = Unpack(message, adapter);
-            var done = mediator.ExecuteHandler(content, token);
+            var done = mediator.ForkDispatch(content, token);
             await message.WaitAndKeepAlive(token, done);
         }
         catch (Exception error)

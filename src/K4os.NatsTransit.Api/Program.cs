@@ -8,6 +8,10 @@ using K4os.NatsTransit.Api.Extensions;
 using K4os.NatsTransit.Api.Handlers;
 using K4os.NatsTransit.Api.Services;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
+using K4os.Xpovoc.Abstractions;
+using K4os.Xpovoc.Core.Db;
+using K4os.Xpovoc.PgSql;
 using MediatR;
 using Microsoft.Extensions.Options;
 using NATS.Client.Core;
@@ -20,13 +24,25 @@ var builder = WebApplication.CreateBuilder(args);
 var typesRegistry = new KnownTypesRegistry();
 typesRegistry.RegisterAssembly<Program>();
 
+builder.Services.AddSingleton(typesRegistry);
+builder.Services.AddSingleton<JsonSerializerOptions>(
+    _ => new JsonSerializerOptions {
+        TypeInfoResolver = typesRegistry.CreateJsonTypeInfoResolver()
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddMediatR(
-    c => {
-        c.AddOpenBehavior(typeof(RequestMonitor<,>));
-        c.RegisterServicesFromAssemblies(typeof(Program).Assembly);
+builder.Services.AddMediatR(c => c.RegisterServicesFromAssemblies(typeof(Program).Assembly));
+
+builder.Services.AddSingleton<IJobScheduler, DbJobScheduler>();
+builder.Services.AddSingleton<IDbJobStorage, PgSqlJobStorage>();
+builder.Services.AddSingleton<IJobSerializer, SystemTextJsonJobSerializer>();
+builder.Services.AddSingleton<IJobHandler, MessageBusJobHandler>();
+builder.Services.AddSingleton<IPgSqlJobStorageConfig>(
+    new PgSqlJobStorageConfig {
+        ConnectionString = builder.Configuration.GetConnectionString("Xpovoc").ThrowIfNull()
     });
+builder.Services.AddHostedService<JonSchedulerHost>();
 
 builder.Services.Configure<NatsSettings>(builder.Configuration.GetSection("Nats"));
 
@@ -44,23 +60,22 @@ builder.Services.AddSingleton<NatsConnection>();
 builder.Services.AddSingleton<NatsJSContext>();
 builder.Services.AddSingleton<INatsConnection, NatsConnection>();
 builder.Services.AddSingleton<INatsJSContext, NatsJSContext>();
-builder.Services.AddSingleton<JsonSerializerOptions>(
-    _ => new JsonSerializerOptions {
-        TypeInfoResolver = typesRegistry.CreateJsonTypeInfoResolver()
-    });
 builder.Services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
 builder.Services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
+builder.Services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
 
 builder.Services.UseNatsMessageBus(
     c => {
         c.CommandTarget<CreateOrderCommand>("orders.commands.create");
+        c.CommandTarget<CancelOrderCommand>("orders.commands.cancel");
         c.EventTarget<OrderCreatedEvent>("orders.events.created");
+        c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");
 
         c.Stream("orders", ["orders.>"]);
 
         c.CommandConsumer("orders", "commands", ["orders.commands.>"]);
         c.EventConsumer("orders", "events", true, ["orders.events.>"]);
-        
+
         c.CommandSource<IRequest>("orders", "commands");
         c.EventSource<INotification>("orders", "events");
     });

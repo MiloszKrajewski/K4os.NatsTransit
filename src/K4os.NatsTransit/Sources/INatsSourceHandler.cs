@@ -4,5 +4,5 @@ namespace K4os.NatsTransit.Sources;
 
 public interface INatsSourceHandler: IDisposable
 {
-    IDisposable Subscribe(CancellationToken token, IMediatorAdapter mediator);
+    IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator);
 }

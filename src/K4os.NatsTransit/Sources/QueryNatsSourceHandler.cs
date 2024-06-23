@@ -54,7 +54,7 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _disposables = new DisposableBag();
     }
 
-    public IDisposable Subscribe(CancellationToken token, IMediatorAdapter mediator)
+    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         var agents = Enumerable
@@ -64,14 +64,14 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         return Disposable.Create(cts.Cancel);
     }
 
-    private Task Consume(IAgentContext context, IMediatorAdapter mediator) =>
+    private Task Consume(IAgentContext context, IMessageDispatcher mediator) =>
         _inboundAdapter is null
             ? Consume(context, mediator, _requestDeserializer, NullInboundAdapter)
             : Consume(context, mediator, BinaryDeserializer, _inboundAdapter);
 
     private async Task Consume<TPayload>(
         IAgentContext context, 
-        IMediatorAdapter mediator,
+        IMessageDispatcher mediator,
         INatsDeserialize<TPayload> deserializer,
         IInboundAdapter<TPayload, TRequest> adapter)
     {
@@ -86,12 +86,12 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         CancellationToken token, 
         NatsMsg<TPayload> message, 
         IInboundAdapter<TPayload, TRequest> adapter, 
-        IMediatorAdapter mediator)
+        IMessageDispatcher mediator)
     {
         try
         {
             var request = Unpack(message, adapter);
-            var result = mediator.TryExecuteHandler<TRequest, TResponse>(request, token);
+            var result = mediator.ForkDispatchWithResult<TRequest, TResponse>(request, token);
             await TrySendResponse(message, await result, token);
         }
         catch (Exception error)

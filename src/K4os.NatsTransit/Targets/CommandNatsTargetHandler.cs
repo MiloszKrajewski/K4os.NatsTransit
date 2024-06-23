@@ -37,7 +37,7 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public override Task Handle(CancellationToken token, TCommand command) =>
         _adapter is null
-            ? Handle(token, command, _serializer, NullAdapter)
+            ? Handle(token, command, _serializer, NullOutboundAdapter)
             : Handle(token, command, BinarySerializer, _adapter);
 
     public Task Handle<TPayload>(

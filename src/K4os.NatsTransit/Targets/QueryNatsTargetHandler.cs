@@ -47,15 +47,15 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         (_requestAdapter, _responseAdapter) switch {
             (null, null) => Handle(
                 token, request, 
-                _serializer, NullRequestAdapter, 
-                _deserializer, NullResponseAdapter),
+                _serializer, NullOutboundAdapter, 
+                _deserializer, NullInboundAdapter),
             ({ } requestAdapter, null) => Handle(
                 token, request, 
                 BinarySerializer, requestAdapter, 
-                _deserializer, NullResponseAdapter),
+                _deserializer, NullInboundAdapter),
             (null, { } responseAdapter) => Handle(
                 token, request, 
-                _serializer, NullRequestAdapter, 
+                _serializer, NullOutboundAdapter, 
                 BinaryDeserializer, responseAdapter),
             ({ } requestAdapter, { } responseAdapter) => Handle(
                 token, request, 

@@ -27,8 +27,7 @@ nuget K4os.Async.Toys
 nuget K4os.KnownTypes
 nuget K4os.KnownTypes.SystemTextJson
 
-nuget K4os.Xpovoc.Redis
-nuget K4os.Xpovoc.MediatR
+nuget K4os.Xpovoc.PgSql
 nuget K4os.Xpovoc.Abstractions
 nuget K4os.Xpovoc.Core
 

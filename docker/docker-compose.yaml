@@ -13,9 +13,10 @@ services:
     # volumes:
     #   - nats-js-data:/tmp/nats/jetstream
 
-  redis:
-    image: redis
-    entrypoint: redis-server
-    command: --appendonly yes
+  pgsql:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: "test"
+      POSTGRES_PASSWORD: "Test!123"
     ports:
-      - 6379:6379
+      - 5432:5432

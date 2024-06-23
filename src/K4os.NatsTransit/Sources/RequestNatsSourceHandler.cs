@@ -38,12 +38,12 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
         CancellationToken token,
         NatsJSMsg<TPayload> message,
         IInboundAdapter<TPayload, TRequest> adapter,
-        IMediatorAdapter mediator)
+        IMessageDispatcher mediator)
     {
         try
         {
             var request = Unpack(message, adapter);
-            var result = mediator.TryExecuteHandler<TRequest, TResponse>(request, token);
+            var result = mediator.ForkDispatchWithResult<TRequest, TResponse>(request, token);
             await message.WaitAndKeepAlive(token, result);
             await TrySendResponse(message, await result, token);
         }

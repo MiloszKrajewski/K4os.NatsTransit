@@ -13,6 +13,11 @@ Serilog.Settings.Configuration
 NATS.Net
 MediatR
 Polly
+
 K4os.Async.Toys
 K4os.KnownTypes
 K4os.KnownTypes.SystemTextJson
+
+K4os.Xpovoc.PgSql
+K4os.Xpovoc.Abstractions
+K4os.Xpovoc.Core

@@ -1,28 +1,13 @@
-﻿using MediatR;
-
-namespace K4os.NatsTransit.Abstractions;
+﻿namespace K4os.NatsTransit.Abstractions;
 
 public interface IMessageBus
 {
-    Task Send<TCommand>(
-        TCommand command, CancellationToken token = default)
-        where TCommand: IRequest;
-
-    Task Publish<TEvent>(
-        TEvent @event, CancellationToken token = default)
-        where TEvent: INotification;
-
-    Task<TResponse> Query<TQuery, TResponse>(
-        TQuery query, CancellationToken token = default)
-        where TQuery: IRequest<TResponse>;
+    Task<object?> Dispatch(
+        object message, 
+        CancellationToken token = default);
     
-    Task<TResponse> Request<TRequest, TResponse>(
-        TRequest request, CancellationToken token = default)
-        where TRequest: IRequest<TResponse>;
-    
-    Task<TEvent> Await<TEvent>(
-        Func<TEvent, bool> predicate, 
+    Task<object?> Await(
+        Func<object, bool> predicate, 
         TimeSpan? timeout = null, 
-        CancellationToken token = default)
-        where TEvent: INotification;
+        CancellationToken token = default);
 }

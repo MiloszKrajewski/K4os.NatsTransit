@@ -37,7 +37,7 @@ public class EventNatsTargetHandler<TEvent>:
 
     public override Task Handle(CancellationToken token, TEvent @event) =>
         _adapter is null
-            ? Handle(token, @event, _serializer, NullAdapter)
+            ? Handle(token, @event, _serializer, NullOutboundAdapter)
             : Handle(token, @event, BinarySerializer, _adapter);
 
     public Task Handle<TPayload>(
