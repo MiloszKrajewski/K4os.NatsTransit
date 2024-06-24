@@ -82,6 +82,7 @@ public static class ApplicationSetupExtensions
         services.AddSingleton<IJobHandler, MessageBusJobHandler>();
         services.AddSingleton<IPgSqlJobStorageConfig>(
             new PgSqlJobStorageConfig {
+                Schema = "xpovoc",
                 ConnectionString = configuration.GetConnectionString("Xpovoc").ThrowIfNull()
             });
         services.AddHostedService<JobSchedulerHost>();

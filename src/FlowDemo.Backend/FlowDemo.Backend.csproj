@@ -8,6 +8,7 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\FlowDemo.Entities\FlowDemo.Entities.csproj" />
     <ProjectReference Include="..\FlowDemo.Handlers\FlowDemo.Handlers.csproj" />
     <ProjectReference Include="..\FlowDemo.Hosting\FlowDemo.Hosting.csproj" />
     <ProjectReference Include="..\FlowDemo.Messages\FlowDemo.Messages.csproj" />

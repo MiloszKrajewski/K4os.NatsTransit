@@ -34,6 +34,10 @@ nuget K4os.Xpovoc.PgSql
 nuget K4os.Xpovoc.Abstractions
 nuget K4os.Xpovoc.Core
 
+nuget Microsoft.EntityFrameworkCore.Design
+nuget Microsoft.EntityFrameworkCore
+nuget Npgsql.EntityFrameworkCore.PostgreSQL
+
 nuget Microsoft.NET.Test.Sdk
 nuget xunit
 nuget xunit.runner.visualstudio copy_local:true

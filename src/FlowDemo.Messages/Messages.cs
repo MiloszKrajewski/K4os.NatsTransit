@@ -11,6 +11,9 @@ public class CreateOrderCommand: IRequest
 {
     [JsonPropertyName("request_id")]
     public Guid RequestId { get; set; }
+
+    [JsonPropertyName("requested_by")]
+    public string? RequestedBy { get; set; }
 }
 
 [KnownTypeAlias("OrderCreatedEvent.v1")]
@@ -21,10 +24,13 @@ public class OrderCreatedEvent: INotification
     
     [JsonPropertyName("order_id")]
     public Guid OrderId { get; set; }
+
+    [JsonPropertyName("created_by")]
+    public string? CreatedBy { get; set; }
 }
 
-[KnownTypeAlias("CancelOrderCommand.v1")]
-public class CancelOrderCommand: IRequest
+[KnownTypeAlias("TryCancelOrderCommand.v1")]
+public class TryCancelOrderCommand: IRequest
 {
     [JsonPropertyName("order_id")]
     public Guid OrderId { get; set; }
@@ -47,6 +53,31 @@ public class GetOrderQuery: IRequest<OrderResponse>
 [KnownTypeAlias("OrderResponse.v1")]
 public class OrderResponse
 {
+    [JsonPropertyName("found")]
+    public bool Found { get; set; }
+    
     [JsonPropertyName("order_id")]
-    public Guid OrderId { get; set; }
+    public Guid? OrderId { get; set; }
+
+    [JsonPropertyName("created_by")]
+    public string? CreatedBy { get; set; }
+
+    [JsonPropertyName("is_paid")]
+    public bool IsPaid { get; set; }
+    
+    [JsonPropertyName("is_cancelled")]
+    public bool IsCancelled { get; set; }
+}
+
+[KnownTypeAlias("SendNotification.v1")]
+public class SendNotificationCommand
+{
+    [JsonPropertyName("email")]
+    public string? Email { get; set; }
+    
+    [JsonPropertyName("subject")]
+    public string? Subject { get; set; }
+    
+    [JsonPropertyName("body")]
+    public string? Body { get; set; }
 }

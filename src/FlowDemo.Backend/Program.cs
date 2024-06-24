@@ -1,7 +1,9 @@
+using FlowDemo.Entities;
 using FlowDemo.Handlers;
 using FlowDemo.Hosting.Extensions;
 using FlowDemo.Messages;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -11,10 +13,14 @@ builder.ConfigureMediator<CreateOrderHandler>();
 builder.ConfigureXpovoc();
 builder.ConfigureNats();
 
+builder.Services.AddDbContext<OrdersDbContext>(options => {
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Storage"));
+});
+
 builder.ConfigureMessageBus(
     c => {
         c.CommandTarget<CreateOrderCommand>("orders.commands.create");
-        c.CommandTarget<CancelOrderCommand>("orders.commands.cancel");
+        c.CommandTarget<TryCancelOrderCommand>("orders.commands.cancel");
         c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
         c.EventTarget<OrderCreatedEvent>("orders.events.created");
         c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");

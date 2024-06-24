@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FlowDemo.Entities\FlowDemo.Entities.csproj" />
     <ProjectReference Include="..\FlowDemo.Messages\FlowDemo.Messages.csproj" />
     <ProjectReference Include="..\K4os.NatsTransit.Abstractions\K4os.NatsTransit.Abstractions.csproj" />
   </ItemGroup>
