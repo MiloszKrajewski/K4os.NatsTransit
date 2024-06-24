@@ -1,45 +1,33 @@
-var builder = WebApplication.CreateBuilder(args);
+using FlowDemo.Handlers;
+using FlowDemo.Hosting.Extensions;
+using FlowDemo.Messages;
+using MediatR;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+var builder = Host.CreateApplicationBuilder(args);
 
-var app = builder.Build();
+builder.ConfigureLogging();
+builder.ConfigureSerialization<CreateOrderCommand>();
+builder.ConfigureMediator<CreateOrderHandler>();
+builder.ConfigureXpovoc();
+builder.ConfigureNats();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+builder.ConfigureMessageBus(
+    c => {
+        c.Stream("orders", ["orders.>"]);
+        c.Consumer("orders", "commands", ["orders.commands.>"]);
+        c.Consumer("orders", "events", true, ["orders.events.>"]);
 
-app.UseHttpsRedirection();
+        c.CommandTarget<CreateOrderCommand>("orders.commands.create");
+        c.CommandTarget<CancelOrderCommand>("orders.commands.cancel");
+        c.QueryTarget<GetOrderQuery, OrderResponse>("queries.get-order-by-id");
+        c.EventTarget<OrderCreatedEvent>("orders.events.created");
+        c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");
 
-var summaries = new[] {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering",
-    "Scorching"
-};
+        c.CommandSource<IRequest>("orders", "commands");
+        c.EventSource<INotification>("orders", "events");
+        c.QuerySource<GetOrderQuery, OrderResponse>("queries.get-order-by-id");
+        c.EventListener<OrderCreatedEvent>("orders.events.created");
+    });
 
-app.MapGet(
-        "/weatherforecast", () => {
-            var forecast = Enumerable.Range(1, 5).Select(
-                    index =>
-                        new WeatherForecast
-                        (
-                            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                            Random.Shared.Next(-20, 55),
-                            summaries[Random.Shared.Next(summaries.Length)]
-                        ))
-                .ToArray();
-            return forecast;
-        })
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+var host = builder.Build();
+host.Run();

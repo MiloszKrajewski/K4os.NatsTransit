@@ -27,25 +27,37 @@ public static class ApplicationSetupExtensions
         this IHostBuilder hostBuilder)
     {
         hostBuilder.UseSerilog(
-            (context, configuration) => {
-                var serilogTemplate =
-                    "[{Timestamp:HH:mm:ss.fff} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}";
-                configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .Enrich.FromLogContext()
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
-                    .WriteTo.Console(outputTemplate: serilogTemplate);
-            });
+            (context, logging) => ConfigureLogging(
+                logging, context.Configuration));
+    }
+
+    public static void ConfigureLogging(
+        this IHostApplicationBuilder builder)
+    {
+        builder.Services.AddSerilog(
+            (provider, logging) => ConfigureLogging(
+                logging, provider.GetRequiredService<IConfiguration>()));
+    }
+
+    private static void ConfigureLogging(LoggerConfiguration logging, IConfiguration config)
+    {
+        var serilogTemplate =
+            "[{Timestamp:HH:mm:ss.fff} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}";
+        logging
+            .ReadFrom.Configuration(config)
+            .Enrich.FromLogContext()
+            .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
+            .WriteTo.Console(outputTemplate: serilogTemplate);
     }
 
     public static void ConfigureSerialization<TAssemblyHook>(
         this IHostApplicationBuilder builder)
     {
         var services = builder.Services;
-        
+
         var typesRegistry = new KnownTypesRegistry();
         typesRegistry.RegisterAssembly<TAssemblyHook>();
 
@@ -78,7 +90,7 @@ public static class ApplicationSetupExtensions
             });
         services.AddHostedService<JobSchedulerHost>();
     }
-    
+
     public static void ConfigureNats(
         this IHostApplicationBuilder builder)
     {
@@ -97,14 +109,19 @@ public static class ApplicationSetupExtensions
         services.AddSingleton<INatsConnection, NatsConnection>();
         services.AddSingleton<INatsJSContext, NatsJSContext>();
     }
-    
+
     public static void ConfigureMessageBus(
-        this WebApplicationBuilder webApplicationBuilder, 
+        this IHostApplicationBuilder webApplicationBuilder,
+        Action<NatsMessageBusConfigurator> configure) =>
+        ConfigureMessageBus(webApplicationBuilder.Services, configure);
+
+    private static void ConfigureMessageBus(
+        IServiceCollection services, 
         Action<NatsMessageBusConfigurator> configure)
     {
-        webApplicationBuilder.Services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
-        webApplicationBuilder.Services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
-        webApplicationBuilder.Services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
-        webApplicationBuilder.Services.UseNatsMessageBus(configure);
+        services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
+        services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
+        services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
+        services.UseNatsMessageBus(configure);
     }
 }
