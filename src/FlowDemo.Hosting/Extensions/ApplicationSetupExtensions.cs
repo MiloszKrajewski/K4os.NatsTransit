@@ -1,9 +1,9 @@
 ﻿using System.Reflection;
 using System.Text.Json;
+using FlowDemo.Hosting.Services;
 using K4os.KnownTypes;
 using K4os.KnownTypes.SystemTextJson;
 using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Api.Services;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.Xpovoc.Abstractions;
@@ -46,10 +46,6 @@ public static class ApplicationSetupExtensions
         logging
             .ReadFrom.Configuration(config)
             .Enrich.FromLogContext()
-            .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
-            .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics", LogEventLevel.Fatal)
             .WriteTo.Console(outputTemplate: serilogTemplate);
     }
 

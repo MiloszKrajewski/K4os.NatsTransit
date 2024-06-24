@@ -118,7 +118,10 @@ public class NatsMessageBus: IHostedService, IMessageBus
         {
             Log.LogError(error, "Failed to start service bus");
             _started.TrySetException(error);
+            throw;
         }
+        
+        Log.LogInformation("MessageBus service started");
     }
 
     public Task StopAsync(CancellationToken cancellationToken)

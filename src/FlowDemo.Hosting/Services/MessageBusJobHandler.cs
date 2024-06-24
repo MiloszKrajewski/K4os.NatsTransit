@@ -1,9 +1,8 @@
 using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Core;
 using K4os.Xpovoc.Abstractions;
 using MediatR;
 
-namespace K4os.NatsTransit.Api.Services;
+namespace FlowDemo.Hosting.Services;
 
 public class MessageBusJobHandler: IJobHandler
 {

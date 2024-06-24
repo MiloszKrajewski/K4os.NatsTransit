@@ -2,7 +2,7 @@
 using K4os.KnownTypes;
 using K4os.Xpovoc.Abstractions;
 
-namespace K4os.NatsTransit.Api.Services;
+namespace FlowDemo.Hosting.Services;
 
 public class SystemTextJsonJobSerializer: IJobSerializer
 {

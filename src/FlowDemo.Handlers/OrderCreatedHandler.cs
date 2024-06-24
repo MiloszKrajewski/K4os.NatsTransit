@@ -2,7 +2,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace K4os.NatsTransit.Api.Handlers;
+namespace FlowDemo.Handlers;
 
 public class OrderCreatedHandler: INotificationHandler<OrderCreatedEvent>
 {

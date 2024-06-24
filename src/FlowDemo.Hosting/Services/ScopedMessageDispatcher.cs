@@ -5,7 +5,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace K4os.NatsTransit.Api.Services;
+namespace FlowDemo.Hosting.Services;
 
 public class ScopedMessageDispatcher: IMessageDispatcher
 {

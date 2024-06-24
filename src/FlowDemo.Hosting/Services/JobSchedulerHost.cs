@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace K4os.NatsTransit.Api.Services;
+namespace FlowDemo.Hosting.Services;
 
 public class JobSchedulerHost: IHostedService
 {

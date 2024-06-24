@@ -10,8 +10,5 @@ Serilog.Sinks.Console
 Serilog.Extensions.Hosting
 Serilog.Settings.Configuration
 
-NATS.Net
-MediatR
-
 Microsoft.AspNetCore.OpenApi
 Swashbuckle.AspNetCore
