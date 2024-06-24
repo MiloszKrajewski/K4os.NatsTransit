@@ -1,16 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <IsPackable>true</IsPackable>
-    <SignAssembly>true</SignAssembly>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
-  
   <ItemGroup>
+    <ProjectReference Include="..\FlowDemo.Messages\FlowDemo.Messages.csproj" />
     <ProjectReference Include="..\K4os.NatsTransit.Abstractions\K4os.NatsTransit.Abstractions.csproj" />
   </ItemGroup>
-  
-  <Import Project="$(PublicAssemblyProps)" />
   <Import Project="..\..\.paket\Paket.Restore.targets" />
-  
 </Project>

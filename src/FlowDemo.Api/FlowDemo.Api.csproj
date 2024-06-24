@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\FlowDemo.Handlers\FlowDemo.Handlers.csproj" />
+    <ProjectReference Include="..\FlowDemo.Hosting\FlowDemo.Hosting.csproj" />
+    <ProjectReference Include="..\FlowDemo.Messages\FlowDemo.Messages.csproj" />
+    <ProjectReference Include="..\K4os.NatsTransit\K4os.NatsTransit.csproj" />
+  </ItemGroup>
+  
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+
+</Project>

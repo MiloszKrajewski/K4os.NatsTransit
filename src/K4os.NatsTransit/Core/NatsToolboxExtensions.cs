@@ -16,10 +16,6 @@ public static class NatsToolboxExtensions
     private static readonly NatsRawSerializer<IMemoryOwner<byte>> BinaryDeserializer =
         NatsRawSerializer<IMemoryOwner<byte>>.Default;
 
-    private static string GetReplyTo<TRequest>(NatsMsg<TRequest> request) =>
-        request.Headers.TryGetReplyTo() ?? request.ReplyTo ??
-        throw new InvalidOperationException("Message does not have reply-to header");
-
     private static string GetReplyTo<TRequest>(NatsJSMsg<TRequest> request) =>
         request.Headers.TryGetReplyTo() ?? request.ReplyTo ??
         throw new InvalidOperationException("Message does not have reply-to header");
@@ -70,6 +66,7 @@ public static class NatsToolboxExtensions
         IOutboundAdapter<TResponse> adapter) =>
         toolbox.Respond(token, request, response, BinarySerializer, adapter);
 
+    #warning should not use publish
     public static ValueTask Respond<TRequest, TResponse>(
         this NatsToolbox toolbox,
         CancellationToken token,
@@ -77,6 +74,7 @@ public static class NatsToolboxExtensions
         INatsSerialize<TResponse> serializer) =>
         toolbox.Publish(token, GetReplyTo(request), response, serializer);
 
+    #warning should not use publish
     public static ValueTask Respond<TRequest, TResponse>(
         this NatsToolbox toolbox,
         CancellationToken token,
@@ -84,6 +82,7 @@ public static class NatsToolboxExtensions
         IOutboundAdapter<TResponse> adapter) =>
         toolbox.Publish(token, GetReplyTo(request), response, adapter);
 
+    #warning should not use publish
     public static ValueTask Respond<TRequest>(
         this NatsToolbox toolbox,
         CancellationToken token,

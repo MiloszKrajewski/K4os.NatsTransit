@@ -189,8 +189,10 @@ public class NatsToolbox
         return response;
     }
     
+    // ReSharper disable once UnusedParameter.Local
     private string? GetKnownType<TResponse>(TResponse response) => null;
     
+    // ReSharper disable once UnusedMethodReturnValue.Local
     private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) => 
         value is not null && (headers ??= new NatsHeaders()).TryAdd(key, value);
 }

@@ -1,0 +1,17 @@
+Microsoft.Extensions.DependencyInjection
+Microsoft.Extensions.Logging
+Microsoft.Extensions.Hosting
+
+System.IO.Hashing
+
+Serilog
+Serilog.AspNetCore
+Serilog.Sinks.Console
+Serilog.Extensions.Hosting
+Serilog.Settings.Configuration
+
+NATS.Net
+MediatR
+
+Microsoft.AspNetCore.OpenApi
+Swashbuckle.AspNetCore

@@ -1,0 +1,5 @@
+Microsoft.Extensions.DependencyInjection.Abstractions
+Microsoft.Extensions.Logging.Abstractions
+
+MediatR
+K4os.Xpovoc.Abstractions

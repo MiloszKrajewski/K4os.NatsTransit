@@ -1,0 +1,17 @@
+Microsoft.Extensions.DependencyInjection.Abstractions
+Microsoft.Extensions.Logging.Abstractions
+Microsoft.Extensions.Hosting.Abstractions
+
+MediatR
+K4os.KnownTypes
+K4os.KnownTypes.SystemTextJson
+
+Serilog
+Serilog.AspNetCore
+Serilog.Sinks.Console
+Serilog.Extensions.Hosting
+Serilog.Settings.Configuration
+
+K4os.Xpovoc.PgSql
+K4os.Xpovoc.Abstractions
+K4os.Xpovoc.Core
