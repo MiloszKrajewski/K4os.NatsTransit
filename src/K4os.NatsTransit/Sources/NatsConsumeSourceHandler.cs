@@ -16,7 +16,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
     public static INatsDeserialize<IMemoryOwner<byte>> BinaryDeserializer =>
         NatsRawSerializer<IMemoryOwner<byte>>.Default;
 
-    public static IInboundAdapter<TMessage, TMessage> NullInboundAdapter => 
+    public static IInboundAdapter<TMessage, TMessage> NullInboundAdapter =>
         NullInboundAdapter<TMessage>.Default;
 
     protected readonly ILogger Log;
@@ -28,9 +28,9 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
     private readonly IInboundAdapter<TMessage>? _adapter;
     private readonly int _concurrency;
     private readonly DisposableBag _disposables;
-
+    
     protected NatsConsumeSourceHandler(
-        NatsToolbox toolbox, 
+        NatsToolbox toolbox,
         string stream, string consumer,
         IInboundAdapter<TMessage>? adapter = null,
         int concurrency = 1)
@@ -44,7 +44,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
         _concurrency = concurrency.NotLessThan(1);
         _disposables = new DisposableBag();
     }
-    
+
     protected NatsToolbox Toolbox => _toolbox;
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
@@ -84,6 +84,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
         try
         {
             var content = Unpack(message, adapter);
+            OnMessage(_toolbox, content);
             var done = mediator.ForkDispatch(content, token);
             await message.WaitAndKeepAlive(token, done);
         }
@@ -92,9 +93,11 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
             Log.LogError(error, "Failed to process message");
         }
     }
-    
+
+    protected virtual void OnMessage(NatsToolbox toolbox, TMessage content) { }
+
     protected TMessage Unpack<TPayload>(
-        NatsJSMsg<TPayload> message, IInboundAdapter<TPayload, TMessage> adapter) => 
+        NatsJSMsg<TPayload> message, IInboundAdapter<TPayload, TMessage> adapter) =>
         _toolbox.Unpack(message, adapter);
 
     public virtual void Dispose() => _disposables.Dispose();

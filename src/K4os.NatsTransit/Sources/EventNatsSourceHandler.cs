@@ -21,4 +21,7 @@ public class EventNatsSourceHandler<TEvent>:
 
     public EventNatsSourceHandler(NatsToolbox toolbox, Config config):
         base(toolbox, config.Stream, config.Consumer, config.Adapter, config.Concurrency) { }
+
+    protected override void OnMessage(NatsToolbox toolbox, TEvent content) => 
+        toolbox.OnEvent(content);
 }
