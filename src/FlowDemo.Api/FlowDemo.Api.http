@@ -12,7 +12,7 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "crea"
+  "requested_by": "customer@brightsign.biz"
 }
 
 ### GetOrderQuery

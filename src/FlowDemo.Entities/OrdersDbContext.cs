@@ -11,6 +11,7 @@ public class OrdersDbContext: DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
         var order = modelBuilder.Entity<OrderEntity>();
         order.HasKey(o => o.OrderId);
         order.Property(o => o.CreatedBy).IsRequired().HasMaxLength(1024);

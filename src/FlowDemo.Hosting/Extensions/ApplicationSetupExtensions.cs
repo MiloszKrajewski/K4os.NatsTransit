@@ -9,20 +9,26 @@ using K4os.NatsTransit.Extensions;
 using K4os.Xpovoc.Abstractions;
 using K4os.Xpovoc.Core.Db;
 using K4os.Xpovoc.PgSql;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
-using Serilog.Events;
+using Serilog.Sinks.OpenTelemetry;
 
 namespace FlowDemo.Hosting.Extensions;
 
 public static class ApplicationSetupExtensions
 {
+    private static readonly string ApplicationName =
+        (Assembly.GetEntryAssembly()?.GetName().Name).ThrowIfNull();
+
     public static void ConfigureLogging(
         this IHostBuilder hostBuilder)
     {
@@ -46,7 +52,55 @@ public static class ApplicationSetupExtensions
         logging
             .ReadFrom.Configuration(config)
             .Enrich.FromLogContext()
-            .WriteTo.Console(outputTemplate: serilogTemplate);
+            .WriteTo.Console(outputTemplate: serilogTemplate)
+            .WriteTo.OpenTelemetry(
+                x => {
+                    x.Endpoint = config.GetConnectionString("Otlp") ?? "http://localhost:4317";
+                    x.ResourceAttributes = new Dictionary<string, object> {
+                        { "service.name", ApplicationName }
+                    };
+                    x.IncludedData =
+                        IncludedData.TraceIdField |
+                        IncludedData.SpanIdField |
+                        IncludedData.MessageTemplateMD5HashAttribute;
+                });
+    }
+
+    public static void ConfigureTelemetry(
+        this IHostApplicationBuilder builder)
+    {
+        var logging = builder.Logging;
+        var services = builder.Services;
+
+        // logging
+        //     .AddOpenTelemetry(
+        //         x => {
+        //             x.IncludeScopes = true;
+        //             x.IncludeFormattedMessage = true;
+        //         });
+        services
+            .AddOpenTelemetry()
+            .ConfigureResource(r => r.AddService(ApplicationName))
+            .WithLogging()
+            .WithMetrics(
+                x => x
+                    .AddRuntimeInstrumentation()
+                    .AddMeter(
+                        "Microsoft.AspNetCore.Hosting",
+                        "Microsoft.AspNetCore.Server.Kestrel",
+                        "System.Net.Http"))
+            .WithTracing(
+                x => x
+                    .SetSampler<AlwaysOnSampler>()
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation());
+        // services.Configure<OpenTelemetryLoggerOptions>(l => l.AddOtlpExporter());
+        services.ConfigureOpenTelemetryMeterProvider(m => m.AddOtlpExporter());
+        services.ConfigureOpenTelemetryTracerProvider(t => t.AddOtlpExporter());
+        services.AddHealthChecks().AddCheck("default", () => HealthCheckResult.Healthy());
+        services.ConfigureHttpClientDefaults(h => h.AddStandardResilienceHandler());
+
+        services.AddMetrics();
     }
 
     public static void ConfigureSerialization<TAssemblyHook>(
@@ -97,7 +151,7 @@ public static class ApplicationSetupExtensions
         services.AddSingleton<NatsOpts>(
             p => new NatsOpts {
                 Url = configuration.GetConnectionString("Nats").ThrowIfNull(),
-                Name = Assembly.GetEntryAssembly()?.FullName!,
+                Name = ApplicationName,
                 LoggerFactory = p.GetRequiredService<ILoggerFactory>()
             });
         services.AddSingleton<NatsJSOpts>();
@@ -113,7 +167,7 @@ public static class ApplicationSetupExtensions
         ConfigureMessageBus(webApplicationBuilder.Services, configure);
 
     private static void ConfigureMessageBus(
-        IServiceCollection services, 
+        IServiceCollection services,
         Action<NatsMessageBusConfigurator> configure)
     {
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();

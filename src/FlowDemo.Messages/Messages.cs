@@ -7,7 +7,7 @@ using MediatR;
 namespace FlowDemo.Messages;
 
 [KnownTypeAlias("CreateOrderCommand.v1")]
-public class CreateOrderCommand: IRequest
+public record CreateOrderCommand: IRequest
 {
     [JsonPropertyName("request_id")]
     public Guid RequestId { get; set; }

@@ -1,12 +1,15 @@
 using FlowDemo.Hosting.Extensions;
 using FlowDemo.Messages;
+using K4os.NatsTransit.Abstractions;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.ConfigureLogging();
+builder.ConfigureLogging();
 builder.ConfigureSerialization<CreateOrderCommand>();
 builder.ConfigureNats();
+builder.ConfigureTelemetry();
 
 builder.ConfigureMessageBus(
     c => {
@@ -15,6 +18,8 @@ builder.ConfigureMessageBus(
         c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
         c.EventTarget<OrderCreatedEvent>("orders.events.created");
         c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");
+        
+        c.EventListener<OrderCreatedEvent>("orders.events.created");
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -25,10 +30,24 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseSerilogRequestLogging();
+app.UseHealthChecks("/health");
 
 app.MapGet("/now", () => DateTime.UtcNow).WithOpenApi();
 
-app.MapCommand<CreateOrderCommand>("orders/create");
+// app.MapCommand<CreateOrderCommand>("orders/create");
+
+app.MapPost(
+    "/orders/create",
+    async (
+        CreateOrderCommand command,
+        [FromServices] IMessageBus messageBus
+    ) => {
+        var requestId = Guid.NewGuid();
+        var response = messageBus.Await<OrderCreatedEvent>(e => e.RequestId == requestId);
+        await messageBus.Send(command with { RequestId = requestId });
+        return await response;
+    }).WithOpenApi();
+
 app.MapQuery<GetOrderQuery, OrderResponse>("orders/query");
 
 app.Run();

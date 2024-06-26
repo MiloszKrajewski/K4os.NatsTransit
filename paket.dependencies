@@ -18,6 +18,7 @@ nuget System.IO.Hashing
 nuget Serilog
 nuget Serilog.AspNetCore
 nuget Serilog.Sinks.Console
+nuget Serilog.Sinks.OpenTelemetry
 nuget Serilog.Settings.Configuration
 nuget Serilog.Extensions.Hosting
 
@@ -37,6 +38,13 @@ nuget K4os.Xpovoc.Core
 nuget Microsoft.EntityFrameworkCore.Design
 nuget Microsoft.EntityFrameworkCore
 nuget Npgsql.EntityFrameworkCore.PostgreSQL
+
+nuget Microsoft.Extensions.Http.Resilience
+nuget OpenTelemetry.Exporter.OpenTelemetryProtocol
+nuget OpenTelemetry.Extensions.Hosting
+nuget OpenTelemetry.Instrumentation.AspNetCore
+nuget OpenTelemetry.Instrumentation.Http
+nuget OpenTelemetry.Instrumentation.Runtime
 
 nuget Microsoft.NET.Test.Sdk
 nuget xunit

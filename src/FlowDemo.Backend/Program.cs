@@ -12,6 +12,7 @@ builder.ConfigureSerialization<CreateOrderCommand>();
 builder.ConfigureMediator<CreateOrderHandler>();
 builder.ConfigureXpovoc();
 builder.ConfigureNats();
+builder.ConfigureTelemetry();
 
 builder.Services.AddDbContext<OrdersDbContext>(options => {
     options.UseNpgsql(builder.Configuration.GetConnectionString("Storage"));
