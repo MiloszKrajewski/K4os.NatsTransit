@@ -24,7 +24,8 @@ public static class NatsMessageBusConfiguratorExtensions
                     p.GetRequiredService<INatsJSContext>(),
                     p.GetRequiredService<INatsSerializerFactory>(),
                     p.GetRequiredService<IExceptionSerializer>(),
-                    p.GetRequiredService<IMessageDispatcher>());
+                    p.GetRequiredService<IMessageDispatcher>(),
+                    p.GetService<INatsMessageTracer>());
             });
         services.AddSingleton<IMessageBus>(p => p.GetRequiredService<NatsMessageBus>());
         services.AddHostedService<NatsMessageBus>(p => p.GetRequiredService<NatsMessageBus>());

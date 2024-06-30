@@ -54,6 +54,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowDemo.Api", "FlowDemo.Ap
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowDemo.Entities", "FlowDemo.Entities\FlowDemo.Entities.csproj", "{F1B8DDD9-854A-45FD-B1D4-067162F0B5FA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "K4os.NatsTransit.OpenTelemetry", "K4os.NatsTransit.OpenTelemetry\K4os.NatsTransit.OpenTelemetry.csproj", "{D200712F-093D-487B-92D3-8C885D2CA6D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -98,6 +100,10 @@ Global
 		{F1B8DDD9-854A-45FD-B1D4-067162F0B5FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F1B8DDD9-854A-45FD-B1D4-067162F0B5FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F1B8DDD9-854A-45FD-B1D4-067162F0B5FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D200712F-093D-487B-92D3-8C885D2CA6D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D200712F-093D-487B-92D3-8C885D2CA6D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D200712F-093D-487B-92D3-8C885D2CA6D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D200712F-093D-487B-92D3-8C885D2CA6D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -110,5 +116,6 @@ Global
 		{51C27610-D999-43AC-BA33-31A6FF171C81} = {D48D47BC-DC60-4437-9F87-CAD037302712}
 		{9E8BFFCF-4E43-4BA9-8197-245BDB1396E7} = {D48D47BC-DC60-4437-9F87-CAD037302712}
 		{E81E74F4-7A5C-4DDE-8B71-4A8F4B0705DB} = {89F26831-2006-41F9-8DE7-713C03987DBD}
+		{D200712F-093D-487B-92D3-8C885D2CA6D8} = {D48D47BC-DC60-4437-9F87-CAD037302712}
 	EndGlobalSection
 EndGlobal

@@ -19,13 +19,15 @@ public class NatsToolbox
     private readonly INatsSerializerFactory _serializerFactory;
     private readonly IExceptionSerializer _exceptionSerializer;
     private readonly ObservableEvent<INotification> _eventObserver;
+    private readonly INatsMessageTracer _messageTracer;
 
     public NatsToolbox(
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext jetStream,
         INatsSerializerFactory serializerFactory,
-        IExceptionSerializer exceptionSerializer)
+        IExceptionSerializer exceptionSerializer,
+        INatsMessageTracer? messageTracer = null)
     {
         _loggerFactory = loggerFactory;
         _connection = connection;
@@ -33,6 +35,7 @@ public class NatsToolbox
         _serializerFactory = serializerFactory;
         _exceptionSerializer = exceptionSerializer;
         _eventObserver = new ObservableEvent<INotification>();
+        _messageTracer = messageTracer ?? NullMessageTracer.Instance;
     }
 
     public ILoggerFactory LoggerFactory => _loggerFactory;
@@ -61,7 +64,8 @@ public class NatsToolbox
         INatsDeserialize<T> deserializer)
     {
         var options = default(NatsSubOpts);
-        return _connection.SubscribeAsync(subject, null, deserializer, options, token);
+        var messages = _connection.SubscribeAsync(subject, null, deserializer, options, token);
+        return TryRestoreTrace(messages);
     }
 
     public async Task<IAsyncEnumerable<NatsJSMsg<T>>> ConsumeMany<T>(
@@ -70,9 +74,10 @@ public class NatsToolbox
         INatsDeserialize<T> deserializer)
     {
         var subscription = await _jetStream.GetConsumerAsync(stream, consumer, token);
-        return subscription.ConsumeAsync(deserializer, null, token);
+        var messages = subscription.ConsumeAsync(deserializer, null, token);
+        return TryRestoreTrace(messages);
     }
-    
+
     public ValueTask Publish<TResponse, TPayload>(
         CancellationToken token,
         string subject, TResponse response,
@@ -81,6 +86,7 @@ public class NatsToolbox
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
+        TryAddTrace(ref headers);
         var payload = adapter.Adapt(subject, ref headers, response);
         var message = new NatsMsg<TPayload> {
             Subject = subject, 
@@ -89,7 +95,7 @@ public class NatsToolbox
         };
         return _connection.PublishAsync(message, serializer, null, token);
     }
-    
+
     public ValueTask Publish(
         CancellationToken token,
         string subject, Exception exception)
@@ -97,6 +103,7 @@ public class NatsToolbox
         var payload = _exceptionSerializer.Serialize(exception);
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
+        TryAddTrace(ref headers);
         var message = new NatsMsg<byte[]> {
             Subject = subject, 
             Headers = headers
@@ -113,6 +120,7 @@ public class NatsToolbox
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.ReplyToHeaderName, replySubject);
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
+        TryAddTrace(ref headers);
         var payload = adapter.Adapt(subject, ref headers, request);
         return _jetStream.PublishAsync(subject, payload, serializer, null, headers, token);
     }
@@ -127,6 +135,7 @@ public class NatsToolbox
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
+        TryAddTrace(ref headers);
         var payload = outAdapter.Adapt(subject, ref headers, request);
         var message = new NatsMsg<TRequestPayload> {
             Subject = subject,
@@ -150,6 +159,7 @@ public class NatsToolbox
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
+        TryAddTrace(ref headers);
         var payload = adapter.Adapt(request.Subject, ref headers, response);
         var message = new NatsMsg<TPayload> {
             Headers = headers, 
@@ -165,12 +175,13 @@ public class NatsToolbox
         var payload = _exceptionSerializer.Serialize(exception);
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
+        TryAddTrace(ref headers);
         var message = new NatsMsg<byte[]> {
             Headers = headers
         };
         return request.ReplyAsync(message, null, null, token);
     }
-    
+
     public void OnEvent<TEvent>(TEvent @event) 
         where TEvent: INotification => 
         _eventObserver.OnNext(@event);
@@ -195,4 +206,30 @@ public class NatsToolbox
     // ReSharper disable once UnusedMethodReturnValue.Local
     private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) => 
         value is not null && (headers ??= new NatsHeaders()).TryAdd(key, value);
+    
+    private void TryAddTrace(ref NatsHeaders? headers) => 
+        _messageTracer.Inject(ref headers);
+    
+    private void TryRestoreTrace(NatsHeaders? headers) => 
+        _messageTracer.Extract(headers);
+
+    private async IAsyncEnumerable<NatsMsg<T>> TryRestoreTrace<T>(
+        IAsyncEnumerable<NatsMsg<T>> stream)
+    {
+        await foreach (var message in stream)
+        {
+            TryRestoreTrace(message.Headers);
+            yield return message;
+        }
+    }
+
+    private async IAsyncEnumerable<NatsJSMsg<T>> TryRestoreTrace<T>(
+        IAsyncEnumerable<NatsJSMsg<T>> stream)
+    {
+        await foreach (var message in stream)
+        {
+            TryRestoreTrace(message.Headers);
+            yield return message;
+        }
+    }
 }

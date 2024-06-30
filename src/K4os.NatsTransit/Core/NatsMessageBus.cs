@@ -18,7 +18,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     private readonly INatsContextAction[] _actions;
     private readonly INatsSourceHandler[] _sources;
     private readonly INatsTargetHandler[] _targets;
-    private readonly IMessageDispatcher _mediator;
+    private readonly IMessageDispatcher _dispatcher;
 
     private readonly TaskCompletionSource _started = new();
     private readonly CancellationTokenSource _cts;
@@ -29,7 +29,8 @@ public class NatsMessageBus: IHostedService, IMessageBus
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
         IExceptionSerializer exceptionSerializer,
-        IMessageDispatcher mediator,
+        IMessageDispatcher dispatcher,
+        INatsMessageTracer? messageTracer,
         IEnumerable<INatsContextAction> actions,
         IEnumerable<INatsTargetConfig> targets,
         IEnumerable<INatsSourceConfig> sources)
@@ -38,8 +39,9 @@ public class NatsMessageBus: IHostedService, IMessageBus
         var toolbox = _toolbox = new NatsToolbox(
             loggerFactory,
             connection, context,
-            serializerFactory, exceptionSerializer);
-        _mediator = mediator;
+            serializerFactory, exceptionSerializer, 
+            messageTracer);
+        _dispatcher = dispatcher;
         _actions = actions.ToArray();
         _sources = sources.Select(s => s.CreateHandler(toolbox)).ToArray();
         _targets = targets.Select(s => s.CreateHandler(toolbox)).ToArray();
@@ -109,7 +111,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
 
             foreach (var source in _sources)
             {
-                _ = source.Subscribe(token, _mediator);
+                _ = source.Subscribe(token, _dispatcher);
             }
 
             _started.TrySetResult();

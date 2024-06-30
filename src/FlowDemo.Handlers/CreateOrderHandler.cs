@@ -49,6 +49,6 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
         await _messageBus.Publish(notification, token);
         
         var cancellation = new TryCancelOrderCommand { OrderId = orderId };
-        await _scheduler.Schedule(DateTimeOffset.Now.AddSeconds(10), cancellation);
+        await _scheduler.Schedule(DateTimeOffset.Now.AddSeconds(30), cancellation);
     }
 }

@@ -6,6 +6,7 @@ using K4os.KnownTypes.SystemTextJson;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.OpenTelemetry;
 using K4os.Xpovoc.Abstractions;
 using K4os.Xpovoc.Core.Db;
 using K4os.Xpovoc.PgSql;
@@ -69,15 +70,8 @@ public static class ApplicationSetupExtensions
     public static void ConfigureTelemetry(
         this IHostApplicationBuilder builder)
     {
-        var logging = builder.Logging;
         var services = builder.Services;
 
-        // logging
-        //     .AddOpenTelemetry(
-        //         x => {
-        //             x.IncludeScopes = true;
-        //             x.IncludeFormattedMessage = true;
-        //         });
         services
             .AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(ApplicationName))
@@ -88,13 +82,14 @@ public static class ApplicationSetupExtensions
                     .AddMeter(
                         "Microsoft.AspNetCore.Hosting",
                         "Microsoft.AspNetCore.Server.Kestrel",
-                        "System.Net.Http"))
+                        "System.Net.Http",
+                        "FlowDemo"))
             .WithTracing(
                 x => x
                     .SetSampler<AlwaysOnSampler>()
                     .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation());
-        // services.Configure<OpenTelemetryLoggerOptions>(l => l.AddOtlpExporter());
+                    .AddHttpClientInstrumentation()
+                    .AddSource("FlowDemo"));
         services.ConfigureOpenTelemetryMeterProvider(m => m.AddOtlpExporter());
         services.ConfigureOpenTelemetryTracerProvider(t => t.AddOtlpExporter());
         services.AddHealthChecks().AddCheck("default", () => HealthCheckResult.Healthy());
@@ -131,6 +126,8 @@ public static class ApplicationSetupExtensions
         var services = builder.Services;
         var configuration = builder.Configuration;
         services.AddSingleton<IJobScheduler, DbJobScheduler>();
+        services.AddSingleton<ISchedulerConfig>(
+            new SchedulerConfig { PollInterval = TimeSpan.FromSeconds(1) });
         services.AddSingleton<IDbJobStorage, PgSqlJobStorage>();
         services.AddSingleton<IJobSerializer, SystemTextJsonJobSerializer>();
         services.AddSingleton<IJobHandler, MessageBusJobHandler>();
@@ -173,6 +170,7 @@ public static class ApplicationSetupExtensions
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
         services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
         services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
+        services.AddSingleton<INatsMessageTracer, NatsMessageTracer>();
         services.UseNatsMessageBus(configure);
     }
 }

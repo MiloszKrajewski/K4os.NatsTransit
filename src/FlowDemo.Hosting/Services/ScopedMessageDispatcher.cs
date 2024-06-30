@@ -11,6 +11,8 @@ public class ScopedMessageDispatcher: IMessageDispatcher
 {
     protected readonly ILogger Log;
 
+    private static readonly ActivitySource ActivitySource = new("FlowDemo");
+
     private readonly IServiceProvider _provider;
 
     public ScopedMessageDispatcher(
@@ -23,24 +25,18 @@ public class ScopedMessageDispatcher: IMessageDispatcher
 
     public async Task<object?> Dispatch(object message, CancellationToken token)
     {
-        var stopwatch = Stopwatch.StartNew();
         var typeName = message.GetType().Name;
-        Log.LogInformation("Message {TypeName} received", typeName);
+        using var activity = ActivitySource.StartActivity(typeName);
+        Log.LogDebug("{TypeName} received", typeName);
         try
         {
             var result = await ScopedInvoke(message, typeName, token);
-            var elapsed = stopwatch.Elapsed.TotalMilliseconds;
-            Log.LogInformation(
-                "Message {TypeName} processed ({Time:0} ms)",
-                typeName, elapsed);
+            Log.LogInformation("{TypeName} succeeded", typeName);
             return result;
         }
         catch (Exception e)
         {
-            var elapsed = stopwatch.Elapsed.TotalMilliseconds;
-            Log.LogError(
-                e, "Processing {TypeName} has failed ({Time:0} ms)",
-                typeName, elapsed);
+            Log.LogError(e, "{TypeName} failed", typeName);
             throw;
         }
     }

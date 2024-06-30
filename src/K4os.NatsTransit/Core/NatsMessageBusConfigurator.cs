@@ -24,12 +24,14 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
         IExceptionSerializer exceptionSerializer,
-        IMessageDispatcher mediator) =>
+        IMessageDispatcher dispatcher,
+        INatsMessageTracer? messageTracer) =>
         new(
             loggerFactory,
             connection, context,
             serializerFactory, exceptionSerializer,
-            mediator,
+            dispatcher,
+            messageTracer,
             _actions, _targets, _sources);
 
     private static string GetApplicationName()
@@ -63,6 +65,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
                     FilterSubjects = subjects,
                     AckPolicy = ConsumerConfigAckPolicy.Explicit,
                     AckWait = NatsConstants.AckTimeout,
+                    MaxDeliver = 10, 
                 }));
     }
     

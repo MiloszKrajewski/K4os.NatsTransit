@@ -1,16 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-  
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  
   <ItemGroup>
-    <ProjectReference Include="..\K4os.NatsTransit.OpenTelemetry\K4os.NatsTransit.OpenTelemetry.csproj" />
-    <ProjectReference Include="..\K4os.NatsTransit\K4os.NatsTransit.csproj" />
+    <ProjectReference Include="..\K4os.NatsTransit.Abstractions\K4os.NatsTransit.Abstractions.csproj" />
   </ItemGroup>
-  
   <Import Project="..\..\.paket\Paket.Restore.targets" />
-  
 </Project>

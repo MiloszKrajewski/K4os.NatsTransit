@@ -9,11 +9,9 @@ public class JobSchedulerHost: IHostedService
     private readonly IServiceProvider _provider;
     private IJobScheduler? _scheduler;
 
-    public JobSchedulerHost(IServiceProvider provider)
-    {
+    public JobSchedulerHost(IServiceProvider provider) => 
         _provider = provider;
-    }
-    
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _scheduler = _provider.GetRequiredService<IJobScheduler>();
