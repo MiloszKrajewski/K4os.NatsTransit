@@ -83,13 +83,16 @@ public static class ApplicationSetupExtensions
                         "Microsoft.AspNetCore.Hosting",
                         "Microsoft.AspNetCore.Server.Kestrel",
                         "System.Net.Http",
+                        "K4os.NatsTransit",
                         "FlowDemo"))
             .WithTracing(
                 x => x
                     .SetSampler<AlwaysOnSampler>()
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddSource("FlowDemo"));
+                    .AddSource(
+                        "FlowDemo",
+                        "K4os.NatsTransit"));
         services.ConfigureOpenTelemetryMeterProvider(m => m.AddOtlpExporter());
         services.ConfigureOpenTelemetryTracerProvider(t => t.AddOtlpExporter());
         services.AddHealthChecks().AddCheck("default", () => HealthCheckResult.Healthy());

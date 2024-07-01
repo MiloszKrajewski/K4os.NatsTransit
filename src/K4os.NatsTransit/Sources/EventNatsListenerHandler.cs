@@ -9,32 +9,33 @@ using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Sources;
 
-public class EventNatsListenerHandler<TRequest>: INatsSourceHandler 
-    where TRequest: INotification
+public class EventNatsListenerHandler<TEvent>: INatsSourceHandler 
+    where TEvent: INotification
 {
     protected readonly ILogger Log;
     
     public static INatsDeserialize<IMemoryOwner<byte>> BinaryDeserializer =>
         NatsRawSerializer<IMemoryOwner<byte>>.Default;
 
-    public static IInboundAdapter<TRequest, TRequest> NullInboundAdapter => 
-        NullInboundAdapter<TRequest>.Default;
+    public static IInboundAdapter<TEvent, TEvent> NullInboundAdapter => 
+        NullInboundAdapter<TEvent>.Default;
     
     private readonly NatsToolbox _toolbox;
     private readonly string _subject;
-    private readonly INatsDeserialize<TRequest> _requestDeserializer;
-    private readonly IInboundAdapter<TRequest>? _inboundAdapter;
+    private readonly INatsDeserialize<TEvent> _requestDeserializer;
+    private readonly IInboundAdapter<TEvent>? _inboundAdapter;
     private readonly int _concurrency;
     private readonly DisposableBag _disposables;
+    private readonly string _activityName;
 
     public record Config(
         string Subject,
-        IInboundAdapter<TRequest>? InboundAdapter = null,
+        IInboundAdapter<TEvent>? InboundAdapter = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {
         public INatsSourceHandler CreateHandler(NatsToolbox toolbox) =>
-            new EventNatsListenerHandler<TRequest>(toolbox, this);
+            new EventNatsListenerHandler<TEvent>(toolbox, this);
     }
 
     public EventNatsListenerHandler(NatsToolbox toolbox, Config config)
@@ -42,10 +43,12 @@ public class EventNatsListenerHandler<TRequest>: INatsSourceHandler
         Log = toolbox.GetLogger(this);
         _toolbox = toolbox;
         _subject = config.Subject;
-        _requestDeserializer = toolbox.Deserializer<TRequest>();
+        _requestDeserializer = toolbox.Deserializer<TEvent>();
         _inboundAdapter = config.InboundAdapter;
         _concurrency = config.Concurrency.NotLessThan(1);
         _disposables = new DisposableBag();
+        var eventName = typeof(TEvent).Name;
+        _activityName = $"Listen<{eventName}>({_subject})";
     }
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
@@ -67,7 +70,7 @@ public class EventNatsListenerHandler<TRequest>: INatsSourceHandler
         IAgentContext context, 
         IMessageDispatcher mediator,
         INatsDeserialize<TPayload> deserializer,
-        IInboundAdapter<TPayload, TRequest> adapter)
+        IInboundAdapter<TPayload, TEvent> adapter)
     {
         var token = context.Token;
         var consumer = _toolbox.SubscribeMany(token, _subject, deserializer);
@@ -78,9 +81,10 @@ public class EventNatsListenerHandler<TRequest>: INatsSourceHandler
     protected Task ConsumeOne<TPayload>(
         CancellationToken token, 
         NatsMsg<TPayload> message, 
-        IInboundAdapter<TPayload, TRequest> adapter, 
+        IInboundAdapter<TPayload, TEvent> adapter, 
         IMessageDispatcher mediator)
     {
+        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers);
         try
         {
             var request = Unpack(message, adapter);
@@ -93,8 +97,8 @@ public class EventNatsListenerHandler<TRequest>: INatsSourceHandler
         return Task.CompletedTask;
     }
 
-    private TRequest Unpack<TPayload>(
-        NatsMsg<TPayload> message, IInboundAdapter<TPayload, TRequest> adapter) => 
+    private TEvent Unpack<TPayload>(
+        NatsMsg<TPayload> message, IInboundAdapter<TPayload, TEvent> adapter) => 
         _toolbox.Unpack(message, adapter);
 
     public void Dispose()

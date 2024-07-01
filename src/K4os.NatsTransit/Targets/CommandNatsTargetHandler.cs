@@ -16,6 +16,7 @@ public class CommandNatsTargetHandler<TCommand>:
     private readonly NatsToolbox _toolbox;
     private readonly INatsSerialize<TCommand> _serializer;
     private readonly IOutboundAdapter<TCommand>? _adapter;
+    private string _activityName;
 
     public record Config(
         string Subject,
@@ -33,12 +34,18 @@ public class CommandNatsTargetHandler<TCommand>:
         _subject = config.Subject;
         _serializer = toolbox.Serializer<TCommand>();
         _adapter = config.Adapter;
+        var commandType = typeof(TCommand).Name;
+        _activityName = $"Command<{commandType}>({_subject})";
     }
 
-    public override Task Handle(CancellationToken token, TCommand command) =>
-        _adapter is null
+    public override async Task Handle(CancellationToken token, TCommand command)
+    {
+        using var _ = _toolbox.SendActivity(_activityName);
+        var sent = _adapter is null
             ? Handle(token, command, _serializer, NullOutboundAdapter)
             : Handle(token, command, BinarySerializer, _adapter);
+        await sent;
+    }
 
     public Task Handle<TPayload>(
         CancellationToken token, TCommand command,

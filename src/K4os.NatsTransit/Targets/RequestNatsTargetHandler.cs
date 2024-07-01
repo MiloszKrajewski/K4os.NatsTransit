@@ -19,6 +19,7 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
     private readonly INatsDeserialize<TResponse> _deserializer;
     private readonly IOutboundAdapter<TRequest>? _requestAdapter;
     private readonly IInboundAdapter<TResponse>? _responseAdapter;
+    private readonly string _activityName;
 
     public record Config(
         string Subject,
@@ -40,25 +41,28 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
         _deserializer = toolbox.Deserializer<TResponse>();
         _requestAdapter = config.RequestAdapter;
         _responseAdapter = config.ResponseAdapter;
+        var requestType = typeof(TRequest).Name;
+        var responseType = typeof(TResponse).Name;
+        _activityName = $"Request<{requestType},{responseType}>({_subject})";
     }
 
     public override Task<TResponse?> Handle(CancellationToken token, TRequest request) =>
         (_requestAdapter, _responseAdapter) switch {
             (null, null) => Handle(
-                token, request, 
-                _serializer, NullOutboundAdapter, 
+                token, request,
+                _serializer, NullOutboundAdapter,
                 _deserializer, NullInboundAdapter),
             ({ } requestAdapter, null) => Handle(
-                token, request, 
-                BinarySerializer, requestAdapter, 
+                token, request,
+                BinarySerializer, requestAdapter,
                 _deserializer, NullInboundAdapter),
             (null, { } responseAdapter) => Handle(
-                token, request, 
-                _serializer, NullOutboundAdapter, 
+                token, request,
+                _serializer, NullOutboundAdapter,
                 BinaryDeserializer, responseAdapter),
             ({ } requestAdapter, { } responseAdapter) => Handle(
-                token, request, 
-                BinarySerializer, requestAdapter, 
+                token, request,
+                BinarySerializer, requestAdapter,
                 BinaryDeserializer, responseAdapter),
         };
 
@@ -69,13 +73,16 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
         INatsDeserialize<TResponsePayload> deserializer,
         IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
     {
+        using var _ = _toolbox.SendActivity(_activityName);
         // some context why it is done this way:
         // https://github.com/nats-io/nats.py/discussions/221
         // long story short: JS does not have request/reply semantics, only CORE (non-durable)
         var replySubject = $"$reply.{Guid.NewGuid():N}-{DateTime.UtcNow.Ticks:x16}";
-        var subscription = _toolbox.SubscribeOne(token, replySubject, _timeout, deserializer);
+        var subscription = _toolbox.SubscribeOne(
+            token, replySubject, _timeout, deserializer, false);
         var responseTask = /* no await */subscription.FirstOrDefault(token);
-        await _toolbox.Request(token, _subject, request, replySubject, serializer, outboundAdapter);
+        await _toolbox.Request(
+            token, _subject, request, replySubject, serializer, outboundAdapter);
         var response = await responseTask;
         return _toolbox.Unpack(response, inboundAdapter);
     }

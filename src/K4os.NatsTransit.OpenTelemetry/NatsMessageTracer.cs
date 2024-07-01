@@ -11,19 +11,20 @@ public class NatsMessageTracer: INatsMessageTracer
 {
     private TextMapPropagator Propagator => Propagators.DefaultTextMapPropagator;
 
-    public void Inject(ref NatsHeaders? headers)
+    public void Inject(ActivityContext? context, ref NatsHeaders? headers)
     {
+        if (context is null) return;
         headers ??= new NatsHeaders();
-        var activityContext = Activity.Current?.Context ?? default;
-        var propagationContext = new PropagationContext(activityContext, Baggage.Current);
+        var propagationContext = new PropagationContext(context.Value, Baggage.Current); 
         Propagator.Inject(propagationContext, headers, static (h, k, v) => Inject(h, k, v));
     }
 
-    public void Extract(NatsHeaders? headers)
+    public ActivityContext? Extract(NatsHeaders? headers)
     {
-        if (headers is null) return;
+        if (headers is null) return null;
         var context = Propagator.Extract(default, headers, static (h, k) => Extract(h, k));
         Baggage.Current = context.Baggage;
+        return context.ActivityContext;
     }
 
     private static void Inject(NatsHeaders h, string k, string v) => 

@@ -16,6 +16,7 @@ public class EventNatsTargetHandler<TEvent>:
     private readonly string _subject;
     private readonly INatsSerialize<TEvent> _serializer;
     private readonly IOutboundAdapter<TEvent>? _adapter;
+    private string _activityName;
 
     public record Config(
         string Subject,
@@ -33,12 +34,18 @@ public class EventNatsTargetHandler<TEvent>:
         _subject = config.Subject;
         _serializer = toolbox.Serializer<TEvent>();
         _adapter = config.Adapter;
+        var eventType = typeof(TEvent).Name;
+        _activityName = $"Event<{eventType}>({_subject})";
     }
 
-    public override Task Handle(CancellationToken token, TEvent @event) =>
-        _adapter is null
+    public override async Task Handle(CancellationToken token, TEvent @event)
+    {
+        using var _ = _toolbox.SendActivity(_activityName);
+        var sent = _adapter is null
             ? Handle(token, @event, _serializer, NullOutboundAdapter)
             : Handle(token, @event, BinarySerializer, _adapter);
+        await sent;
+    }
 
     public Task Handle<TPayload>(
         CancellationToken token, TEvent @event,

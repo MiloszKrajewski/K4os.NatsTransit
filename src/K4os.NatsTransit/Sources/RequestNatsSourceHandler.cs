@@ -28,10 +28,23 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
     }
 
     public RequestNatsSourceHandler(NatsToolbox toolbox, Config config):
-        base(toolbox, config.Stream, config.Consumer, config.InboundAdapter, config.Concurrency)
+        base(
+            toolbox, 
+            config.Stream, config.Consumer, GetActivityName(config), 
+            config.InboundAdapter, 
+            config.Concurrency)
     {
         _responseSerializer = toolbox.Serializer<TResponse>();
         _outboundAdapter = config.OutboundAdapter;
+    }
+
+    private static string GetActivityName(Config config)
+    {
+        var requestType = typeof(TRequest).Name;
+        var responseType = typeof(TResponse).Name;
+        var streamName = config.Stream;
+        var consumerName = config.Consumer;
+        return $"Consume<{requestType},{responseType}>({streamName}/{consumerName}))";
     }
 
     protected override async Task ConsumeOne<TPayload>(

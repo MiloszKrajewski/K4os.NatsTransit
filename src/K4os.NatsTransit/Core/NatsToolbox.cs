@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Extensions;
@@ -13,6 +14,8 @@ namespace K4os.NatsTransit.Core;
 [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last")]
 public class NatsToolbox
 {
+    public static ActivitySource ActivitySource { get; } = new("K4os.NatsTransit");
+
     private readonly ILoggerFactory _loggerFactory;
     private readonly INatsConnection _connection;
     private readonly INatsJSContext _jetStream;
@@ -52,7 +55,8 @@ public class NatsToolbox
         CancellationToken token,
         string subject,
         TimeSpan timeout,
-        INatsDeserialize<T> deserializer)
+        INatsDeserialize<T> deserializer,
+        bool restoreTrace = true)
     {
         var options = new NatsSubOpts { MaxMsgs = 1, StartUpTimeout = timeout };
         return _connection.SubscribeAsync(subject, null, deserializer, options, token);
@@ -64,8 +68,7 @@ public class NatsToolbox
         INatsDeserialize<T> deserializer)
     {
         var options = default(NatsSubOpts);
-        var messages = _connection.SubscribeAsync(subject, null, deserializer, options, token);
-        return TryRestoreTrace(messages);
+        return _connection.SubscribeAsync(subject, null, deserializer, options, token);
     }
 
     public async Task<IAsyncEnumerable<NatsJSMsg<T>>> ConsumeMany<T>(
@@ -74,8 +77,7 @@ public class NatsToolbox
         INatsDeserialize<T> deserializer)
     {
         var subscription = await _jetStream.GetConsumerAsync(stream, consumer, token);
-        var messages = subscription.ConsumeAsync(deserializer, null, token);
-        return TryRestoreTrace(messages);
+        return subscription.ConsumeAsync(deserializer, null, token);
     }
 
     public ValueTask Publish<TResponse, TPayload>(
@@ -89,8 +91,8 @@ public class NatsToolbox
         TryAddTrace(ref headers);
         var payload = adapter.Adapt(subject, ref headers, response);
         var message = new NatsMsg<TPayload> {
-            Subject = subject, 
-            Headers = headers, 
+            Subject = subject,
+            Headers = headers,
             Data = payload
         };
         return _connection.PublishAsync(message, serializer, null, token);
@@ -105,12 +107,12 @@ public class NatsToolbox
         TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
         TryAddTrace(ref headers);
         var message = new NatsMsg<byte[]> {
-            Subject = subject, 
+            Subject = subject,
             Headers = headers
         };
         return _connection.PublishAsync(message, null, null, token);
     }
-    
+
     public ValueTask<PubAckResponse> Request<TRequest, TPayload>(
         CancellationToken token,
         string subject, TRequest request, string replySubject,
@@ -124,7 +126,7 @@ public class NatsToolbox
         var payload = adapter.Adapt(subject, ref headers, request);
         return _jetStream.PublishAsync(subject, payload, serializer, null, headers, token);
     }
-    
+
     public ValueTask<NatsMsg<TResponsePayload>> Query<TRequest, TRequestPayload, TResponsePayload>(
         CancellationToken token,
         string subject, TRequest request,
@@ -150,7 +152,7 @@ public class NatsToolbox
             token
         );
     }
-    
+
     public ValueTask Respond<TRequest, TResponse, TPayload>(
         CancellationToken token,
         NatsMsg<TRequest> request, TResponse response,
@@ -162,7 +164,7 @@ public class NatsToolbox
         TryAddTrace(ref headers);
         var payload = adapter.Adapt(request.Subject, ref headers, response);
         var message = new NatsMsg<TPayload> {
-            Headers = headers, 
+            Headers = headers,
             Data = payload
         };
         return request.ReplyAsync(message, serializer, null, token);
@@ -182,12 +184,12 @@ public class NatsToolbox
         return request.ReplyAsync(message, null, null, token);
     }
 
-    public void OnEvent<TEvent>(TEvent @event) 
-        where TEvent: INotification => 
+    public void OnEvent<TEvent>(TEvent @event)
+        where TEvent: INotification =>
         _eventObserver.OnNext(@event);
 
     public IObservable<INotification> Events => _eventObserver;
-    
+
     public TMessage Unpack<TPayload, TMessage>(
         Exception? error, string subject, NatsHeaders? headers, TPayload? data,
         IInboundAdapter<TPayload, TMessage> adapter)
@@ -196,40 +198,30 @@ public class NatsToolbox
         var errorText = headers.TryGetError();
         var exception = errorText is null ? null : _exceptionSerializer.Deserialize(errorText);
         if (exception is not null) throw exception;
+
         var response = adapter.Adapt(subject, headers, data.ThrowIfNull());
         return response;
     }
-    
+
     // ReSharper disable once UnusedParameter.Local
     private string? GetKnownType<TResponse>(TResponse response) => null;
-    
+
     // ReSharper disable once UnusedMethodReturnValue.Local
-    private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) => 
+    private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) =>
         value is not null && (headers ??= new NatsHeaders()).TryAdd(key, value);
-    
-    private void TryAddTrace(ref NatsHeaders? headers) => 
-        _messageTracer.Inject(ref headers);
-    
-    private void TryRestoreTrace(NatsHeaders? headers) => 
+
+    private void TryAddTrace(ref NatsHeaders? headers) =>
+        _messageTracer.Inject(Activity.Current?.Context, ref headers);
+
+    private ActivityContext? TryRestoreTrace(NatsHeaders? headers) =>
         _messageTracer.Extract(headers);
-
-    private async IAsyncEnumerable<NatsMsg<T>> TryRestoreTrace<T>(
-        IAsyncEnumerable<NatsMsg<T>> stream)
-    {
-        await foreach (var message in stream)
-        {
-            TryRestoreTrace(message.Headers);
-            yield return message;
-        }
-    }
-
-    private async IAsyncEnumerable<NatsJSMsg<T>> TryRestoreTrace<T>(
-        IAsyncEnumerable<NatsJSMsg<T>> stream)
-    {
-        await foreach (var message in stream)
-        {
-            TryRestoreTrace(message.Headers);
-            yield return message;
-        }
-    }
+    
+    public Activity? SendActivity(string activityName) =>
+        ActivitySource.StartActivity(activityName, ActivityKind.Producer);
+    
+    public Activity? ReceiveActivity(string activityName, ActivityContext? context) =>
+        ActivitySource.StartActivity(activityName, ActivityKind.Consumer, context ?? default);
+    
+    public Activity? ReceiveActivity(string activityName, NatsHeaders? headers) =>
+        ReceiveActivity(activityName, TryRestoreTrace(headers));
 }

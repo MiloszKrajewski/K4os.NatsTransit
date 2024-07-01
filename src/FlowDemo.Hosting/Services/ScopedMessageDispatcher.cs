@@ -26,7 +26,9 @@ public class ScopedMessageDispatcher: IMessageDispatcher
     public async Task<object?> Dispatch(object message, CancellationToken token)
     {
         var typeName = message.GetType().Name;
-        using var activity = ActivitySource.StartActivity(typeName);
+        var activityName = $"Handle<{typeName}>";
+        using var activity = ActivitySource.StartActivity(activityName);
+        
         Log.LogDebug("{TypeName} received", typeName);
         try
         {

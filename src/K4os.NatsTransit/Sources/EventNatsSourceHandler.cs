@@ -20,7 +20,20 @@ public class EventNatsSourceHandler<TEvent>:
     }
 
     public EventNatsSourceHandler(NatsToolbox toolbox, Config config):
-        base(toolbox, config.Stream, config.Consumer, config.Adapter, config.Concurrency) { }
+        base(
+            toolbox, 
+            config.Stream, config.Consumer, GetActivityName(config),
+            config.Adapter, 
+            config.Concurrency) { }
+    
+    private static string GetActivityName(Config config)
+    {
+        var eventType = typeof(TEvent).Name;
+        var streamName = config.Stream;
+        var consumerName = config.Consumer;
+        return $"Consume<{eventType}>({streamName}/{consumerName})";
+    }
+
 
     protected override void OnMessage(NatsToolbox toolbox, TEvent content) => 
         toolbox.OnEvent(content);

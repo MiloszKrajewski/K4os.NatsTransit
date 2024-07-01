@@ -18,6 +18,7 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
     private readonly INatsDeserialize<TResponse> _deserializer;
     private readonly IOutboundAdapter<TRequest>? _requestAdapter;
     private readonly IInboundAdapter<TResponse>? _responseAdapter;
+    private readonly string _activityName;
 
     public record Config(
         string Subject,
@@ -39,6 +40,9 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         _deserializer = toolbox.Deserializer<TResponse>();
         _requestAdapter = config.RequestAdapter;
         _responseAdapter = config.ResponseAdapter;
+        var requestType = typeof(TRequest).Name;
+        var responseType = typeof(TResponse).Name;
+        _activityName = $"Request<{requestType},{responseType}>({_subject})";
     }
 
     // https://github.com/nats-io/nats.py/discussions/221
@@ -70,6 +74,7 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         INatsDeserialize<TResponsePayload> deserializer,
         IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
     {
+        using var _ = _toolbox.SendActivity(_activityName);
         var response = await _toolbox.Query(
             token, _subject, request, serializer, outboundAdapter, deserializer, _timeout);
         return _toolbox.Unpack(response, inboundAdapter);

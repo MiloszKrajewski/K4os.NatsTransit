@@ -29,6 +29,7 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
     private readonly IOutboundAdapter<TResponse>? _outboundAdapter;
     private readonly int _concurrency;
     private readonly DisposableBag _disposables;
+    private readonly string _activityName;
 
     public record Config(
         string Subject,
@@ -52,6 +53,9 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _outboundAdapter = config.OutboundAdapter;
         _concurrency = config.Concurrency.NotLessThan(1);
         _disposables = new DisposableBag();
+        var requestType = typeof(TRequest).Name;
+        var responseType = typeof(TResponse).Name;
+        _activityName = $"Subscribe<{requestType},{responseType}>({_subject})";
     }
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
@@ -88,6 +92,7 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         IInboundAdapter<TPayload, TRequest> adapter, 
         IMessageDispatcher mediator)
     {
+        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers);
         try
         {
             var request = Unpack(message, adapter);

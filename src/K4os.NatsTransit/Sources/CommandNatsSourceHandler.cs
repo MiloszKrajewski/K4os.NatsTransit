@@ -20,5 +20,17 @@ public class CommandNatsSourceHandler<TCommand>:
     }
 
     public CommandNatsSourceHandler(NatsToolbox toolbox, Config config):
-        base(toolbox, config.Stream, config.Consumer, config.Adapter, config.Concurrency) { }
+        base(
+            toolbox,
+            config.Stream, config.Consumer, GetActivityName(config),
+            config.Adapter,
+            config.Concurrency) { }
+
+    private static string GetActivityName(Config config)
+    {
+        var commandType = typeof(TCommand).Name;
+        var streamName = config.Stream;
+        var consumerName = config.Consumer;
+        return $"Consume<{commandType}>({streamName}/{consumerName}))";
+    }
 }
