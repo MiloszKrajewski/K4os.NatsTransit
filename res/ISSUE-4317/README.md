@@ -44,7 +44,7 @@ Content-Type: application/json
 
 expected reponse is something like this:
 
-```
+```http
 HTTP/1.1 200 OK
 Connection: close
 Content-Type: application/json; charset=utf-8
