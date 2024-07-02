@@ -28,7 +28,7 @@ open aspire dashboard with the url which can be found in dashboard log, for exam
 
 ```log
 http://localhost:18888/login?t=a7a5073be654a134ec382b4d581286f2
-``
+```
 
 then open `request.http` and run `CreateOrder` request which is:
 
