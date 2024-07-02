@@ -40,7 +40,7 @@ public class EventNatsTargetHandler<TEvent>:
 
     public override async Task Handle(CancellationToken token, TEvent @event)
     {
-        using var _ = _toolbox.SendActivity(_activityName);
+        using var _ = _toolbox.SendActivity(_activityName, false);
         var sent = _adapter is null
             ? Handle(token, @event, _serializer, NullOutboundAdapter)
             : Handle(token, @event, BinarySerializer, _adapter);

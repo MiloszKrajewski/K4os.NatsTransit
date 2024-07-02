@@ -45,6 +45,7 @@ nuget OpenTelemetry.Extensions.Hosting
 nuget OpenTelemetry.Instrumentation.AspNetCore
 nuget OpenTelemetry.Instrumentation.Http
 nuget OpenTelemetry.Instrumentation.Runtime
+nuget OpenTelemetry.Instrumentation.EntityFrameworkCore beta
 
 nuget Microsoft.NET.Test.Sdk
 nuget xunit

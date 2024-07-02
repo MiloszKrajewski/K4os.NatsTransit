@@ -45,9 +45,13 @@ public static class ApplicationSetupExtensions
             (provider, logging) => ConfigureLogging(
                 logging, provider.GetRequiredService<IConfiguration>()));
     }
+    
+    private static Uri GetTelemetryEndpoint(this IConfiguration config) =>
+        new Uri(config.GetConnectionString("Otlp") ?? "http://localhost:4317");
 
     private static void ConfigureLogging(LoggerConfiguration logging, IConfiguration config)
     {
+        var telemetryEndpoint = config.GetTelemetryEndpoint();
         var serilogTemplate =
             "[{Timestamp:HH:mm:ss.fff} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}";
         logging
@@ -56,7 +60,7 @@ public static class ApplicationSetupExtensions
             .WriteTo.Console(outputTemplate: serilogTemplate)
             .WriteTo.OpenTelemetry(
                 x => {
-                    x.Endpoint = config.GetConnectionString("Otlp") ?? "http://localhost:4317";
+                    x.Endpoint = telemetryEndpoint.ToString();
                     x.ResourceAttributes = new Dictionary<string, object> {
                         { "service.name", ApplicationName }
                     };
@@ -71,6 +75,8 @@ public static class ApplicationSetupExtensions
         this IHostApplicationBuilder builder)
     {
         var services = builder.Services;
+        var config = builder.Configuration;
+        var telemetryEndpoint = config.GetTelemetryEndpoint();
 
         services
             .AddOpenTelemetry()
@@ -79,22 +85,28 @@ public static class ApplicationSetupExtensions
             .WithMetrics(
                 x => x
                     .AddRuntimeInstrumentation()
+                    .AddAspNetCoreInstrumentation()
+                    .AddHttpClientInstrumentation()
                     .AddMeter(
-                        "Microsoft.AspNetCore.Hosting",
-                        "Microsoft.AspNetCore.Server.Kestrel",
-                        "System.Net.Http",
-                        "K4os.NatsTransit",
-                        "FlowDemo"))
+                        ScopedMessageDispatcher.Meter.Name))
             .WithTracing(
                 x => x
                     .SetSampler<AlwaysOnSampler>()
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
+                    .AddEntityFrameworkCoreInstrumentation(
+                        efc => {
+                            efc.SetDbStatementForText = true;
+                            efc.SetDbStatementForStoredProcedure = true;
+                        })
                     .AddSource(
                         "FlowDemo",
-                        "K4os.NatsTransit"));
-        services.ConfigureOpenTelemetryMeterProvider(m => m.AddOtlpExporter());
-        services.ConfigureOpenTelemetryTracerProvider(t => t.AddOtlpExporter());
+                        "K4os.NatsTransit"
+                    ));
+        services.ConfigureOpenTelemetryMeterProvider(
+            m => m.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));
+        services.ConfigureOpenTelemetryTracerProvider(
+            t => t.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));
         services.AddHealthChecks().AddCheck("default", () => HealthCheckResult.Healthy());
         services.ConfigureHttpClientDefaults(h => h.AddStandardResilienceHandler());
 

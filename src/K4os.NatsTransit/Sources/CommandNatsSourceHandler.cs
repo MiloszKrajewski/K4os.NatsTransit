@@ -23,6 +23,7 @@ public class CommandNatsSourceHandler<TCommand>:
         base(
             toolbox,
             config.Stream, config.Consumer, GetActivityName(config),
+            false,
             config.Adapter,
             config.Concurrency) { }
 

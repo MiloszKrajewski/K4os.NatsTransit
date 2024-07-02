@@ -1,3 +1,4 @@
+using FlowDemo.Backend;
 using FlowDemo.Entities;
 using FlowDemo.Handlers;
 using FlowDemo.Hosting.Extensions;
@@ -14,9 +15,10 @@ builder.ConfigureXpovoc();
 builder.ConfigureNats();
 builder.ConfigureTelemetry();
 
-builder.Services.AddDbContext<OrdersDbContext>(options => {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Storage"));
-});
+builder.Services.AddDbContext<OrdersDbContext>(
+    options => {
+        options.UseNpgsql(builder.Configuration.GetConnectionString("Storage"));
+    });
 
 builder.ConfigureMessageBus(
     c => {
@@ -25,16 +27,27 @@ builder.ConfigureMessageBus(
         c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
         c.EventTarget<OrderCreatedEvent>("orders.events.created");
         c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");
+        c.CommandTarget<SendNotificationCommand>("notifications.commands.send");
 
-        c.Stream("orders", ["orders.commands.>", "orders.events.>", "orders.requests.>"]);
+        c.Stream(
+            "orders", 
+            ["orders.commands.>", "orders.events.>", "orders.requests.>"]);
         c.Consumer("orders", "commands", ["orders.commands.>"]);
         c.Consumer("orders", "events", true, ["orders.events.>"]);
+        
+        c.Stream(
+            "notifications",
+            ["notifications.commands.>", "notifications.events.>", "notifications.requests.>"]);
+        c.Consumer("notifications", "commands", ["notifications.commands.>"]);
 
         c.CommandSource<IRequest>("orders", "commands");
         c.EventSource<INotification>("orders", "events");
         c.QuerySource<GetOrderQuery, OrderResponse>("orders.queries.get");
-        c.EventListener<OrderCreatedEvent>("orders.events.created");
+        c.CommandSource<SendNotificationCommand>("notifications", "commands");
     });
 
 var host = builder.Build();
+
+host.Services.ApplyMigrations<OrdersDbContext>();
+
 host.Run();

@@ -84,7 +84,7 @@ public class EventNatsListenerHandler<TEvent>: INatsSourceHandler
         IInboundAdapter<TPayload, TEvent> adapter, 
         IMessageDispatcher mediator)
     {
-        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers);
+        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers, false);
         try
         {
             var request = Unpack(message, adapter);

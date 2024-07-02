@@ -23,6 +23,7 @@ public class EventNatsSourceHandler<TEvent>:
         base(
             toolbox, 
             config.Stream, config.Consumer, GetActivityName(config),
+            false,
             config.Adapter, 
             config.Concurrency) { }
     

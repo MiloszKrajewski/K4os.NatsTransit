@@ -74,7 +74,7 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         INatsDeserialize<TResponsePayload> deserializer,
         IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
     {
-        using var _ = _toolbox.SendActivity(_activityName);
+        using var _ = _toolbox.SendActivity(_activityName, true);
         var response = await _toolbox.Query(
             token, _subject, request, serializer, outboundAdapter, deserializer, _timeout);
         return _toolbox.Unpack(response, inboundAdapter);

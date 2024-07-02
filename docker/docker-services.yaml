@@ -1,0 +1,35 @@
+name: k4os-nats-transit
+
+services: 
+  api:
+    build:
+      context: ..
+      dockerfile: docker/default.dockerfile
+      args:
+        - PROJECT_NAME=FlowDemo.Api
+    depends_on:
+      - nats
+      - dashboard
+    ports:
+      - "5234:80"
+    environment:
+      - ConnectionStrings__Otlp=http://dashboard:18889
+      - ConnectionStrings__Nats=nats://nats:4222
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/default.dockerfile
+      args:
+        - PROJECT_NAME=FlowDemo.Backend
+    depends_on:
+      - pgsql
+      - nats
+      - dashboard
+      - mailhog
+    environment:
+      - ConnectionStrings__Otlp=http://dashboard:18889
+      - ConnectionStrings__Nats=nats://nats:4222
+      - ConnectionStrings__Smtp=smtp://mailhog:1025
+      - ConnectionStrings__Storage=Host=pgsql;Username=test;Password=Test!123
+      - ConnectionStrings__Xpovoc=Host=pgsql;Username=test;Password=Test!123

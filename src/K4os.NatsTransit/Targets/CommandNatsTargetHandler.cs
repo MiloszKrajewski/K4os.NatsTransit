@@ -1,4 +1,5 @@
-﻿using K4os.NatsTransit.Abstractions;
+﻿using System.Diagnostics;
+using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public override async Task Handle(CancellationToken token, TCommand command)
     {
-        using var _ = _toolbox.SendActivity(_activityName);
+        using var _ = _toolbox.SendActivity(_activityName, false);
         var sent = _adapter is null
             ? Handle(token, command, _serializer, NullOutboundAdapter)
             : Handle(token, command, BinarySerializer, _adapter);

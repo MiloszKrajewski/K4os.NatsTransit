@@ -215,13 +215,20 @@ public class NatsToolbox
 
     private ActivityContext? TryRestoreTrace(NatsHeaders? headers) =>
         _messageTracer.Extract(headers);
-    
-    public Activity? SendActivity(string activityName) =>
-        ActivitySource.StartActivity(activityName, ActivityKind.Producer);
-    
-    public Activity? ReceiveActivity(string activityName, ActivityContext? context) =>
-        ActivitySource.StartActivity(activityName, ActivityKind.Consumer, context ?? default);
-    
-    public Activity? ReceiveActivity(string activityName, NatsHeaders? headers) =>
-        ReceiveActivity(activityName, TryRestoreTrace(headers));
+
+    public Activity? SendActivity(string activityName, bool awaitsResponse) =>
+        ActivitySource.StartActivity(
+            activityName, 
+            awaitsResponse ? ActivityKind.Client : ActivityKind.Producer);
+
+    public Activity? ReceiveActivity(
+        string activityName, ActivityContext? context, bool awaitsResponse) =>
+        ActivitySource.StartActivity(
+            activityName, 
+            awaitsResponse ? ActivityKind.Server : ActivityKind.Consumer,
+            context ?? default);
+
+    public Activity? ReceiveActivity(
+        string activityName, NatsHeaders? headers, bool awaitsResponse) =>
+        ReceiveActivity(activityName, TryRestoreTrace(headers), awaitsResponse);
 }

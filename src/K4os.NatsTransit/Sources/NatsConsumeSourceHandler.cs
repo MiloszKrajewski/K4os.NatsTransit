@@ -29,11 +29,13 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
     private readonly int _concurrency;
     private readonly DisposableBag _disposables;
     private readonly string _activityName;
+    private readonly bool _awaitResponse;
 
     protected NatsConsumeSourceHandler(
         NatsToolbox toolbox,
         string stream, string consumer,
         string activityName,
+        bool awaitsResponse,
         IInboundAdapter<TMessage>? adapter = null,
         int concurrency = 1)
     {
@@ -46,6 +48,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
         _concurrency = concurrency.NotLessThan(1);
         _disposables = new DisposableBag();
         _activityName = activityName;
+        _awaitResponse = awaitsResponse;
     }
 
     protected NatsToolbox Toolbox => _toolbox;
@@ -84,7 +87,7 @@ public abstract class NatsConsumeSourceHandler<TMessage>:
         IInboundAdapter<TPayload, TMessage> adapter,
         IMessageDispatcher mediator)
     {
-        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers);
+        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers, _awaitResponse);
         try
         {
             var content = Unpack(message, adapter);

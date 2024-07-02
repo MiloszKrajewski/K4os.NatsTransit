@@ -30,7 +30,8 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
     public RequestNatsSourceHandler(NatsToolbox toolbox, Config config):
         base(
             toolbox, 
-            config.Stream, config.Consumer, GetActivityName(config), 
+            config.Stream, config.Consumer, GetActivityName(config),
+            true,
             config.InboundAdapter, 
             config.Concurrency)
     {

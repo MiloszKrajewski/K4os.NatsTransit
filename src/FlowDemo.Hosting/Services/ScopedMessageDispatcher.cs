@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using K4os.NatsTransit.Abstractions;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,20 @@ public class ScopedMessageDispatcher: IMessageDispatcher
 {
     protected readonly ILogger Log;
 
-    private static readonly ActivitySource ActivitySource = new("FlowDemo");
+    public static readonly ActivitySource ActivitySource = new("FlowDemo");
+    public static readonly Meter Meter = new("FlowDemo");
+
+    private static readonly Counter<long> ExecutionCounter =
+        Meter.CreateCounter<long>("task_executions");
+
+    private static readonly Counter<long> ExceptionCounter =
+        Meter.CreateCounter<long>("task_failures");
+
+    // private static readonly Counter<double> TotalDuration =
+    //     Meter.CreateCounter<double>("task_duration_total", "s");
+
+    private static readonly Histogram<double> DurationHistogram =
+        Meter.CreateHistogram<double>("task_duration", "ms");
 
     private readonly IServiceProvider _provider;
 
@@ -28,17 +42,15 @@ public class ScopedMessageDispatcher: IMessageDispatcher
         var typeName = message.GetType().Name;
         var activityName = $"Handle<{typeName}>";
         using var activity = ActivitySource.StartActivity(activityName);
-        
-        Log.LogDebug("{TypeName} received", typeName);
+
+        var context = OnEnter(message);
         try
         {
-            var result = await ScopedInvoke(message, typeName, token);
-            Log.LogInformation("{TypeName} succeeded", typeName);
-            return result;
+            return OnResult(context, await ScopedInvoke(message, typeName, token));
         }
         catch (Exception e)
         {
-            Log.LogError(e, "{TypeName} failed", typeName);
+            OnError(context, e);
             throw;
         }
     }
@@ -62,6 +74,51 @@ public class ScopedMessageDispatcher: IMessageDispatcher
                     ? await mediator.Send(message, token)
                     : throw new NotSupportedException($"Unsupported message type: {typeName}");
         }
+    }
+
+    public record ExecutionContext
+    {
+        public string TaskName { get; init; } = "";
+        public Stopwatch Stopwatch { get; } = Stopwatch.StartNew();
+    }
+
+    public ExecutionContext OnEnter<TRequest>(TRequest request)
+    {
+        var taskName = (request?.GetType() ?? typeof(TRequest)).Name;
+        Log.LogDebug("Executing {TaskName}", taskName);
+        return new ExecutionContext { TaskName = taskName };
+    }
+
+    public T OnResult<T>(ExecutionContext context, T result)
+    {
+        Log.LogInformation(
+            "Completed {TaskName} in {Elapsed:0.000}s", 
+            context.TaskName, context.Stopwatch.Elapsed.TotalSeconds);
+        OnExit(context, null);
+        return result;
+    }
+
+    public void OnError(ExecutionContext context, Exception error)
+    {
+        Log.LogError(
+            error, "Failed to execute {TaskName} after {Elapsed:0.000}s", 
+            context.TaskName, context.Stopwatch.Elapsed.TotalSeconds);
+        OnExit(context, error);
+    }
+
+    private static void OnExit(ExecutionContext context, Exception? error)
+    {
+        var requestNameLabel = new KeyValuePair<string, object?>("task_name", context.TaskName);
+        var elapsed = context.Stopwatch.Elapsed;
+
+        ExecutionCounter.Add(1, requestNameLabel);
+        // TotalDuration.Add(elapsed.TotalSeconds, requestNameLabel);
+        DurationHistogram.Record(elapsed.TotalMilliseconds, requestNameLabel);
+
+        if (error is null) return;
+
+        var exceptionType = error.GetType().Name;
+        ExceptionCounter.Add(1, requestNameLabel, new("exception_type", exceptionType));
     }
 
     private readonly ConcurrentDictionary<Type, bool> _isQueryCache = new();

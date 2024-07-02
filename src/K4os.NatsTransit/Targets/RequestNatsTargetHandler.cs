@@ -73,7 +73,7 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
         INatsDeserialize<TResponsePayload> deserializer,
         IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
     {
-        using var _ = _toolbox.SendActivity(_activityName);
+        using var _ = _toolbox.SendActivity(_activityName, true);
         // some context why it is done this way:
         // https://github.com/nats-io/nats.py/discussions/221
         // long story short: JS does not have request/reply semantics, only CORE (non-durable)

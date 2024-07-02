@@ -70,10 +70,10 @@ public class OrderResponse
 }
 
 [KnownTypeAlias("SendNotification.v1")]
-public class SendNotificationCommand
+public class SendNotificationCommand: IRequest
 {
     [JsonPropertyName("email")]
-    public string? Email { get; set; }
+    public string? Recipient { get; set; }
     
     [JsonPropertyName("subject")]
     public string? Subject { get; set; }

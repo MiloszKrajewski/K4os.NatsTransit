@@ -1,4 +1,5 @@
 ﻿using FlowDemo.Messages;
+using K4os.NatsTransit.Abstractions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 

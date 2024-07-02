@@ -92,7 +92,7 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         IInboundAdapter<TPayload, TRequest> adapter, 
         IMessageDispatcher mediator)
     {
-        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers);
+        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers, true);
         try
         {
             var request = Unpack(message, adapter);
