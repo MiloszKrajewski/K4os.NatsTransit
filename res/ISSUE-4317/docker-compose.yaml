@@ -1,0 +1,63 @@
+name: k4os-nats-transit-dashboard
+
+services: 
+  nats:
+    image: nats:latest
+    command: -js -m 8222
+    ports:
+      - "4222:4222" # client port
+      - "8222:8222" # management port
+
+  pgsql:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: "test"
+      POSTGRES_PASSWORD: "Test!123"
+    ports:
+      - 5432:5432
+        
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - 1025:1025
+      - 8025:8025
+  
+  dashboard:
+    # image: mcr.microsoft.com/dotnet/aspire-dashboard:8.0.0
+    image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
+    ports:
+      - 18888:18888
+      - 4317:18889
+
+  api:
+    build:
+      context: ../..
+      dockerfile: docker/default.dockerfile
+      args:
+        - PROJECT_NAME=FlowDemo.Api
+    depends_on:
+      - nats
+      - dashboard
+    ports:
+      - "5234:80"
+    environment:
+      - ConnectionStrings__Otlp=http://dashboard:18889
+      - ConnectionStrings__Nats=nats://nats:4222
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: docker/default.dockerfile
+      args:
+        - PROJECT_NAME=FlowDemo.Backend
+    depends_on:
+      - pgsql
+      - nats
+      - dashboard
+      - mailhog
+    environment:
+      - ConnectionStrings__Otlp=http://dashboard:18889
+      - ConnectionStrings__Nats=nats://nats:4222
+      - ConnectionStrings__Smtp=smtp://mailhog:1025
+      - ConnectionStrings__Storage=Host=pgsql;Username=test;Password=Test!123
+      - ConnectionStrings__Xpovoc=Host=pgsql;Username=test;Password=Test!123
