@@ -100,8 +100,8 @@ public static class ApplicationSetupExtensions
                             efc.SetDbStatementForStoredProcedure = true;
                         })
                     .AddSource(
-                        "FlowDemo",
-                        "K4os.NatsTransit"
+                        ScopedMessageDispatcher.ActivitySource.Name,
+                        NatsToolbox.ActivitySource.Name
                     ));
         services.ConfigureOpenTelemetryMeterProvider(
             m => m.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));

@@ -37,8 +37,20 @@ public static class EndpointMappingExtensions
         app.MapPost(
             path ?? $"/{typeof(TCommand).Name}",
             async (
-                [FromBody] TCommand request,
+                [FromBody] TCommand command,
                 [FromServices] IMessageBus messageBus
-            ) => await messageBus.Send(request)
+            ) => await messageBus.Send(command)
         );
+    
+    public static RouteHandlerBuilder MapEvent<TEvent>(
+        this IEndpointRouteBuilder app, string? path = null)
+        where TEvent: INotification =>
+        app.MapPost(
+            path ?? $"/{typeof(TEvent).Name}",
+            async (
+                [FromBody] TEvent @event,
+                [FromServices] IMessageBus messageBus
+            ) => await messageBus.Publish(@event)
+        );
+
 }

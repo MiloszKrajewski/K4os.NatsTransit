@@ -33,6 +33,21 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
         
         Log.LogInformation("Creating order {OrderId} for request {RequestId}", orderId, requestId);
 
+        if (string.IsNullOrWhiteSpace(request.RequestedBy))
+        {
+            await SendOrderRejectedEvent(requestId, token);            
+        }
+        else
+        {
+            var order = await CreateOrder(orderId, request, token);
+            await SendOrderCreatedEvent(requestId, order, token);
+            await ScheduleCancellation(orderId, request.PaymentWindow ?? 30);
+        }
+    }
+    
+    private async Task<OrderEntity> CreateOrder(
+        Guid orderId, CreateOrderCommand request, CancellationToken token)
+    {
         var order = new OrderEntity {
             OrderId = orderId,
             CreatedOn = DateTime.UtcNow,
@@ -40,15 +55,30 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
         };
         _dbContext.Orders.Add(order);
         await _dbContext.SaveChangesAsync(token);
-        
+        return order;
+    }
+
+    private async Task SendOrderCreatedEvent(Guid requestId, OrderEntity order, CancellationToken token)
+    {
         var notification = new OrderCreatedEvent {
             RequestId = requestId, 
-            OrderId = orderId,
+            OrderId = order.OrderId,
             CreatedBy = order.CreatedBy
         };
         await _messageBus.Publish(notification, token);
-        
+    }
+    
+    private async Task SendOrderRejectedEvent(Guid requestId, CancellationToken token)
+    {
+        var notification = new OrderRejectedEvent {
+            RequestId = requestId, 
+        };
+        await _messageBus.Publish(notification, token);
+    }
+    
+    private async Task ScheduleCancellation(Guid orderId, int paymentWindow)
+    {
         var cancellation = new TryCancelOrderCommand { OrderId = orderId };
-        await _scheduler.Schedule(DateTimeOffset.Now.AddSeconds(30), cancellation);
+        await _scheduler.Schedule(DateTimeOffset.Now.AddSeconds(paymentWindow), cancellation);
     }
 }

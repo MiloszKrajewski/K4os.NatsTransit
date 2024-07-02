@@ -14,10 +14,11 @@ builder.ConfigureTelemetry();
 builder.ConfigureMessageBus(
     c => {
         c.CommandTarget<CreateOrderCommand>("orders.commands.create");
+        c.EventTarget<PaymentReceivedEvent>("payments.events.received");
         c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
-        
+
         c.EventListener<OrderCreatedEvent>("orders.events.created");
-        c.EventListener<OrderCancelledEvent>("orders.events.cancelled");
+        c.EventListener<OrderRejectedEvent>("orders.events.rejected");
     });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -41,10 +42,18 @@ app.MapPost(
         [FromServices] IMessageBus messageBus
     ) => {
         var requestId = Guid.NewGuid();
-        var response = messageBus.Await<OrderCreatedEvent>(e => e.RequestId == requestId);
+        var response = messageBus.Await(
+            e =>
+                e is OrderCreatedEvent oce && oce.RequestId == requestId ||
+                e is OrderRejectedEvent ore && ore.RequestId == requestId);
         await messageBus.Send(command with { RequestId = requestId });
-        return await response;
+        return await response switch {
+            OrderCreatedEvent oce => Results.Ok(oce),
+            _ => Results.BadRequest("Order rejected"),
+        };
     }).WithOpenApi();
+
+app.MapEvent<PaymentReceivedEvent>("payments/received");
 
 app.MapQuery<GetOrderQuery, OrderResponse>("orders/query");
 

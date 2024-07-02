@@ -11,12 +11,15 @@ public class OrdersDbContext: DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         var order = modelBuilder.Entity<OrderEntity>();
         order.HasKey(o => o.OrderId);
         order.Property(o => o.CreatedBy).IsRequired().HasMaxLength(1024);
-        order.Property(o => o.CreatedOn)
-            .HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        order
+            .Property(o => o.CreatedOn)
+            .HasConversion(
+                v => v.ToUniversalTime(), 
+                v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
         order.Property(o => o.RowVersion).IsConcurrencyToken();
     }
 }

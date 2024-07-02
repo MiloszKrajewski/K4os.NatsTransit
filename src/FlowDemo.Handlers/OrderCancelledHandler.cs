@@ -1,5 +1,4 @@
-﻿using System.Net.Mail;
-using FlowDemo.Entities;
+﻿using FlowDemo.Entities;
 using FlowDemo.Messages;
 using K4os.NatsTransit.Abstractions;
 using MediatR;
@@ -29,13 +28,25 @@ public class OrderCancelledHandler: INotificationHandler<OrderCancelledEvent>
         var orderId = notification.OrderId;
         Log.LogInformation("Order {OrderId} has been cancelled", orderId);
 
+        var createdBy = await GetCreatedBy(orderId, token);
+        if (createdBy is null) return;
+
+        await SendCancellationEmail(orderId, createdBy, token);
+    }
+
+    private async Task<string?> GetCreatedBy(Guid orderId, CancellationToken token)
+    {
         var createdBy = await _dbContext.Orders
             .AsNoTracking()
             .Where(o => o.OrderId == orderId)
             .Select(o => o.CreatedBy)
             .FirstOrDefaultAsync(token);
-        if (createdBy is null) return;
-
+        return createdBy;
+    }
+    
+    private async Task SendCancellationEmail(
+        Guid orderId, string createdBy, CancellationToken token)
+    {
         var command = new SendNotificationCommand {
             Recipient = createdBy,
             Subject = "Order Cancelled",

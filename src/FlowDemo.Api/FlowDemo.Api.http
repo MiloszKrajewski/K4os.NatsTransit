@@ -5,6 +5,16 @@
 GET {{base}}/now
 Accept: application/json
 
+### CreateOrder (but reject)
+
+POST {{base}}/orders/create
+Accept: application/json
+Content-Type: application/json
+
+{
+  "requested_by": ""
+}
+
 ### CreateOrder
 
 POST {{base}}/orders/create
@@ -13,6 +23,16 @@ Content-Type: application/json
 
 {
   "requested_by": "customer@brightsign.biz"
+}
+
+### PaymentReceived
+
+POST {{base}}/payments/received
+Accept: application/json
+Content-Type: application/json
+
+{
+  "order_id": "2f279c5b-03e2-42a1-9706-cf0b2954cbf3"
 }
 
 ### GetOrderQuery
@@ -25,12 +45,3 @@ Content-Type: application/json
   "order_id": "aedf5acc-4b8c-4261-9090-ee549ef936be"
 }
 
-### PaymentReceived
-
-POST {{base}}/orders/payment
-Accept: application/json
-Content-Type: application/json
-
-{
-  "order_id": "aedf5acc-4b8c-4261-9090-ee549ef936be"
-}

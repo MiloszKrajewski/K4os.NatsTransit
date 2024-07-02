@@ -17,18 +17,20 @@ public class SendNotificationHandler: IRequestHandler<SendNotificationCommand>
         _smtp = new Uri(configuration.GetConnectionString("Smtp") ?? "localhost:1025");
     }
 
-    public async Task Handle(SendNotificationCommand request, CancellationToken cancellationToken)
+    public async Task Handle(SendNotificationCommand request, CancellationToken token)
     {
         var recipient = request.Recipient;
-        if (recipient is null)
-        {
-            Log.LogWarning("Recipient is not specified");
-            return;
-        }
+        if (recipient is null) return;
 
+        await SendEmail(recipient, request, token);
+    }
+
+    private async Task SendEmail(
+        string recipient, SendNotificationCommand request, CancellationToken cancellationToken)
+    {
         var client = new SmtpClient(_smtp.Host, _smtp.Port);
         var message = new MailMessage(
-            "system@company.com", 
+            "system@company.com",
             recipient, request.Subject, request.Body);
         await client.SendMailAsync(message, cancellationToken);
     }

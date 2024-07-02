@@ -23,9 +23,11 @@ builder.Services.AddDbContext<OrdersDbContext>(
 builder.ConfigureMessageBus(
     c => {
         c.CommandTarget<CreateOrderCommand>("orders.commands.create");
-        c.CommandTarget<TryCancelOrderCommand>("orders.commands.cancel");
+        c.CommandTarget<TryCancelOrderCommand>("orders.commands.try-cancel");
+        c.CommandTarget<MarkOrderAsPaidCommand>("orders.commands.mark-paid");
         c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
         c.EventTarget<OrderCreatedEvent>("orders.events.created");
+        c.EventTarget<OrderRejectedEvent>("orders.events.rejected");
         c.EventTarget<OrderCancelledEvent>("orders.events.cancelled");
         c.CommandTarget<SendNotificationCommand>("notifications.commands.send");
 
@@ -39,9 +41,15 @@ builder.ConfigureMessageBus(
             "notifications",
             ["notifications.commands.>", "notifications.events.>", "notifications.requests.>"]);
         c.Consumer("notifications", "commands", ["notifications.commands.>"]);
+        
+        c.Stream(
+            "payments",
+            ["payments.commands.>", "payments.events.>", "payments.requests.>"]);
+        c.Consumer("payments", "events", true, ["payments.events.>"]);
 
         c.CommandSource<IRequest>("orders", "commands");
         c.EventSource<INotification>("orders", "events");
+        c.EventSource<INotification>("payments", "events");
         c.QuerySource<GetOrderQuery, OrderResponse>("orders.queries.get");
         c.CommandSource<SendNotificationCommand>("notifications", "commands");
     });

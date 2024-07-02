@@ -25,18 +25,21 @@ public class GetOrderHandler: IRequestHandler<GetOrderQuery, OrderResponse>
 
         Log.LogInformation("Getting order {OrderId} details", orderId);
 
-        var order = await _dbContext.Orders
-            .AsNoTracking()
-            .FirstOrDefaultAsync(o => o.OrderId == orderId, token);
+        var order = await GetOrder(token, orderId);
 
         return order is null
             ? new OrderResponse { Found = false }
             : new OrderResponse {
-                Found = true, 
-                OrderId = order.OrderId, 
+                Found = true,
+                OrderId = order.OrderId,
                 CreatedBy = order.CreatedBy,
                 IsPaid = order.IsPaid,
                 IsCancelled = order.IsCancelled
             };
     }
+
+    private async Task<OrderEntity?> GetOrder(CancellationToken token, Guid orderId) =>
+        await _dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.OrderId == orderId, token);
 }
