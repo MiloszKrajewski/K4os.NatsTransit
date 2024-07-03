@@ -9,6 +9,9 @@
     "build": ".\\nuke build",
     "rebuild": ".\\nuke rebuild",
     "release": ".\\nuke release",
-    "test": ".\\nuke test"
+    "test": ".\\nuke test",
+    "services": "cd docker && docker compose up -d --remove-orphans",
+    "frontend": "dotnet run --project src/FlowDemo.Api --configuration Release",
+    "backend": "dotnet run --project src/FlowDemo.Backend --configuration Release"
   }
 }
