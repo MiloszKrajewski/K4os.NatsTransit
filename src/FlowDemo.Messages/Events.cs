@@ -24,6 +24,9 @@ public class OrderCreatedEvent: INotification
 
     [JsonPropertyName("created_by")]
     public string? CreatedBy { get; set; }
+
+    [JsonPropertyName("payment_window_ends_on")]
+    public DateTime? PaymentWindowEndsOn { get; set; }
 }
 
 [KnownTypeAlias("OrderRejectedEvent.v1")]

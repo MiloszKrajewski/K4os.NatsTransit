@@ -32,6 +32,6 @@ public class CommandNatsSourceHandler<TCommand>:
         var commandType = typeof(TCommand).Name;
         var streamName = config.Stream;
         var consumerName = config.Consumer;
-        return $"Consume<{commandType}>({streamName}/{consumerName}))";
+        return $"Consume<{commandType}>({streamName}/{consumerName})";
     }
 }

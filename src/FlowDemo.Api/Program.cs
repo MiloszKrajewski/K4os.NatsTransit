@@ -13,12 +13,13 @@ builder.ConfigureTelemetry();
 
 builder.ConfigureMessageBus(
     c => {
-        c.CommandTarget<CreateOrderCommand>("orders.commands.create");
-        c.EventTarget<PaymentReceivedEvent>("payments.events.received");
-        c.QueryTarget<GetOrderQuery, OrderResponse>("orders.queries.get");
+        c.WithTopic("orders")
+            .SendsCommands<CreateOrderCommand>("create-order")
+            .SendsQueries<GetOrderQuery, OrderResponse>("get-order-by-id")
+            .ObservesEvents(["order-created", "order-rejected"]);
 
-        c.EventListener<OrderCreatedEvent>("orders.events.created");
-        c.EventListener<OrderRejectedEvent>("orders.events.rejected");
+        c.WithTopic("payments")
+            .EmitsEvents<PaymentReceivedEvent>("payment-received");
     });
 
 builder.Services.AddEndpointsApiExplorer();

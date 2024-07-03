@@ -32,7 +32,7 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "order_id": "2f279c5b-03e2-42a1-9706-cf0b2954cbf3"
+  "order_id": "50826e66-cbbc-4272-9439-5f49cce4d6e5"
 }
 
 ### GetOrderQuery

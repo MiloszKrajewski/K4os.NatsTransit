@@ -18,6 +18,11 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     private readonly List<INatsTargetConfig> _targets = [];
     private readonly List<INatsSourceConfig> _sources = [];
 
+    public NatsMessageBusConfigurator()
+    {
+        Fluent = new FluentNats(this);
+    }
+
     public NatsMessageBus CreateMessageBus(
         ILoggerFactory loggerFactory,
         INatsConnection connection,
@@ -40,6 +45,10 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         ArgumentException.ThrowIfNullOrWhiteSpace(topAssemblyName);
         return topAssemblyName.Replace(".", "-").ToLower();
     }
+    
+    public IFluentNats Fluent { get; }
+    
+    public IFluentNatsTopic WithTopic(string name) => Fluent.WithTopic(name);
 
     public void Application(string name) => _applicationName = name;
     public string ApplicationName => _applicationName;
@@ -77,6 +86,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         string stream, string consumer, bool applicationSuffix, string[]? subjects = null) =>
         Consumer(stream, consumer, applicationSuffix ? _applicationName : null, subjects);
 
+    // TODO: concurrency?
     public void QueryTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
@@ -166,4 +176,3 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     private string ConsumerName(string consumer, bool applicationSuffix) => 
         applicationSuffix ? $"{consumer}-{_applicationName}" : consumer;
 }
-

@@ -1,7 +1,6 @@
 ﻿using FlowDemo.Entities;
 using FlowDemo.Messages;
 using K4os.NatsTransit.Abstractions;
-using K4os.Xpovoc.Abstractions;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -11,18 +10,15 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
 {
     protected readonly ILogger Log;
     private readonly IMessageBus _messageBus;
-    private readonly IJobScheduler _scheduler;
     private readonly OrdersDbContext _dbContext;
 
     public CreateOrderHandler(
-        ILoggerFactory loggerFactory, 
+        ILoggerFactory loggerFactory,
         IMessageBus messageBus,
-        IJobScheduler scheduler,
         OrdersDbContext dbContext)
     {
         Log = loggerFactory.CreateLogger<CreateOrderHandler>();
         _messageBus = messageBus;
-        _scheduler = scheduler;
         _dbContext = dbContext;
     }
 
@@ -30,24 +26,25 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
     {
         var requestId = request.RequestId;
         var orderId = Guid.NewGuid();
-        
-        Log.LogInformation("Creating order {OrderId} for request {RequestId}", orderId, requestId);
 
         if (string.IsNullOrWhiteSpace(request.RequestedBy))
         {
-            await SendOrderRejectedEvent(requestId, token);            
+            await SendOrderRejectedEvent(requestId, token);
         }
         else
         {
             var order = await CreateOrder(orderId, request, token);
-            await SendOrderCreatedEvent(requestId, order, token);
-            await ScheduleCancellation(orderId, request.PaymentWindow ?? 30);
+            await SendOrderCreatedEvent(request, order, token);
         }
     }
-    
+
     private async Task<OrderEntity> CreateOrder(
         Guid orderId, CreateOrderCommand request, CancellationToken token)
     {
+        Log.LogInformation(
+            "Creating order {OrderId} for request {RequestId}",
+            orderId, request.RequestId);
+
         var order = new OrderEntity {
             OrderId = orderId,
             CreatedOn = DateTime.UtcNow,
@@ -58,27 +55,24 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
         return order;
     }
 
-    private async Task SendOrderCreatedEvent(Guid requestId, OrderEntity order, CancellationToken token)
+    private async Task SendOrderCreatedEvent(
+        CreateOrderCommand request, OrderEntity order, CancellationToken token)
     {
+        var paymentWindow = request.PaymentWindow ?? 30;
         var notification = new OrderCreatedEvent {
-            RequestId = requestId, 
+            RequestId = request.RequestId,
             OrderId = order.OrderId,
-            CreatedBy = order.CreatedBy
+            CreatedBy = order.CreatedBy,
+            PaymentWindowEndsOn = DateTime.UtcNow.AddSeconds(paymentWindow)
         };
         await _messageBus.Publish(notification, token);
     }
-    
+
     private async Task SendOrderRejectedEvent(Guid requestId, CancellationToken token)
     {
         var notification = new OrderRejectedEvent {
-            RequestId = requestId, 
+            RequestId = requestId,
         };
         await _messageBus.Publish(notification, token);
-    }
-    
-    private async Task ScheduleCancellation(Guid orderId, int paymentWindow)
-    {
-        var cancellation = new TryCancelOrderCommand { OrderId = orderId };
-        await _scheduler.Schedule(DateTimeOffset.Now.AddSeconds(paymentWindow), cancellation);
     }
 }
