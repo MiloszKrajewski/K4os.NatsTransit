@@ -8,10 +8,8 @@ public class MessageBusJobHandler: IJobHandler
 {
     private readonly IMessageBus _messageBus;
 
-    public MessageBusJobHandler(IMessageBus messageBus)
-    {
+    public MessageBusJobHandler(IMessageBus messageBus) => 
         _messageBus = messageBus;
-    }
 
     public Task Handle(CancellationToken token, object payload) =>
         payload switch {
