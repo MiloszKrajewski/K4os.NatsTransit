@@ -10,9 +10,9 @@ public class MessageBusJobHandler: IJobHandler
 
     public MessageBusJobHandler(IMessageBus messageBus)
     {
-        _messageBus = messageBus;        
+        _messageBus = messageBus;
     }
-    
+
     public Task Handle(CancellationToken token, object payload) =>
         payload switch {
             INotification notification => _messageBus.Publish(notification, token),
