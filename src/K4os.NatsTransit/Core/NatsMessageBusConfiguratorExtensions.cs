@@ -12,12 +12,13 @@ public static class NatsMessageBusConfiguratorExtensions
 {
     public static IServiceCollection UseNatsMessageBus(
         this IServiceCollection services,
-        Action<NatsMessageBusConfigurator> configure)
+        Action<IFluentNats> configure)
     {
         services.AddSingleton<NatsMessageBus>(
             p => {
                 var configurator = new NatsMessageBusConfigurator();
-                configure(configurator);
+                var fluent = new FluentNats(configurator);
+                configure(fluent);
                 return configurator.CreateMessageBus(
                     p.GetRequiredService<ILoggerFactory>(),
                     p.GetRequiredService<INatsConnection>(),

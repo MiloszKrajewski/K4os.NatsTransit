@@ -1,6 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
-
-namespace K4os.NatsTransit.Core;
+﻿namespace K4os.NatsTransit.Core;
 
 public class NatsContextAction: INatsContextAction
 {

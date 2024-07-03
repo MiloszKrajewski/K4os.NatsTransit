@@ -175,12 +175,12 @@ public static class ApplicationSetupExtensions
 
     public static void ConfigureMessageBus(
         this IHostApplicationBuilder webApplicationBuilder,
-        Action<NatsMessageBusConfigurator> configure) =>
+        Action<IFluentNats> configure) =>
         ConfigureMessageBus(webApplicationBuilder.Services, configure);
 
     private static void ConfigureMessageBus(
         IServiceCollection services,
-        Action<NatsMessageBusConfigurator> configure)
+        Action<IFluentNats> configure)
     {
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
         services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();

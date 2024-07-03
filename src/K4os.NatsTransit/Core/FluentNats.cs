@@ -18,6 +18,8 @@ public class FluentNats: IFluentNats
             name, [$"{name}.commands.>", $"{name}.events.>", $"{name}.requests.>"]);
         return new FluentNatsTopic(_configurator, name);
     }
+    
+    public INatsMessageBusConfigurator Configurator => _configurator;
 }
 
 public class FluentNatsTopic: IFluentNatsTopic

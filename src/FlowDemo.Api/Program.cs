@@ -11,6 +11,9 @@ builder.ConfigureSerialization<CreateOrderCommand>();
 builder.ConfigureNats();
 builder.ConfigureTelemetry();
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.ConfigureMessageBus(
     c => {
         c.WithTopic("orders")
@@ -22,9 +25,6 @@ builder.ConfigureMessageBus(
             .EmitsEvents<PaymentReceivedEvent>("payment-received");
     });
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
 var app = builder.Build();
 
 app.UseSwagger();
@@ -33,8 +33,6 @@ app.UseSerilogRequestLogging();
 app.UseHealthChecks("/health");
 
 app.MapGet("/now", () => DateTime.UtcNow).WithOpenApi();
-
-// app.MapCommand<CreateOrderCommand>("orders/create");
 
 app.MapPost(
     "/orders/create",
@@ -50,12 +48,12 @@ app.MapPost(
         await messageBus.Send(command with { RequestId = requestId });
         return await response switch {
             OrderCreatedEvent oce => Results.Ok(oce),
-            _ => Results.BadRequest("Order rejected"),
+            _ => Results.BadRequest("Order rejected")
         };
     }).WithOpenApi();
 
-app.MapEvent<PaymentReceivedEvent>("payments/received");
-
-app.MapQuery<GetOrderQuery, OrderResponse>("orders/query");
+// app.MapCommand<CreateOrderCommand>("orders/create").WithOpenApi();
+app.MapEvent<PaymentReceivedEvent>("payments/received").WithOpenApi();
+app.MapQuery<GetOrderQuery, OrderResponse>("orders/query").WithOpenApi();
 
 app.Run();

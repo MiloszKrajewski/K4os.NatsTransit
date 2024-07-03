@@ -18,11 +18,6 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     private readonly List<INatsTargetConfig> _targets = [];
     private readonly List<INatsSourceConfig> _sources = [];
 
-    public NatsMessageBusConfigurator()
-    {
-        Fluent = new FluentNats(this);
-    }
-
     public NatsMessageBus CreateMessageBus(
         ILoggerFactory loggerFactory,
         INatsConnection connection,
@@ -46,10 +41,6 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         return topAssemblyName.Replace(".", "-").ToLower();
     }
     
-    public IFluentNats Fluent { get; }
-    
-    public IFluentNatsTopic WithTopic(string name) => Fluent.WithTopic(name);
-
     public void Application(string name) => _applicationName = name;
     public string ApplicationName => _applicationName;
 
