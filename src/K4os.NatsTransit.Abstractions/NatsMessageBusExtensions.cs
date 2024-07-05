@@ -1,5 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions.Internal;
-using MediatR;
+﻿using MediatR;
 
 namespace K4os.NatsTransit.Abstractions;
 
@@ -46,18 +45,15 @@ public static class NatsMessageBusExtensions
         return response as TEvent ?? throw NoResponseException<TEvent>();
     }
     
-    private static Exception InvalidResponseException<TQuery, TResponse>(Type actual)
+    private static InvalidOperationException InvalidResponseException<TQuery, TResponse>(Type actual)
         where TQuery: IRequest<TResponse> =>
-        new InvalidOperationException(
-            $"Invalid response type for {typeof(TQuery).Name}, expected {typeof(TResponse).Name}, received {actual.Name}");
+        new($"Invalid response type for {typeof(TQuery).Name}, expected {typeof(TResponse).Name}, received {actual.Name}");
     
-    private static Exception NoResponseException<TEvent>()
+    private static InvalidOperationException NoResponseException<TEvent>()
         where TEvent: INotification =>
-        new InvalidOperationException(
-            $"No event received, expected {typeof(TEvent).Name}");
+        new($"No event received, expected {typeof(TEvent).Name}");
 
-    private static Exception NoResponseException<TQuery, TResponse>()
+    private static InvalidOperationException NoResponseException<TQuery, TResponse>()
         where TQuery: IRequest<TResponse> =>
-        new InvalidOperationException(
-            $"No response received for {typeof(TQuery).Name}, expected {typeof(TResponse).Name}");
+        new($"No response received for {typeof(TQuery).Name}, expected {typeof(TResponse).Name}");
 }

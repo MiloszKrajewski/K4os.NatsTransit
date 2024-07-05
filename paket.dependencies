@@ -22,6 +22,7 @@ nuget Serilog.Sinks.OpenTelemetry
 nuget Serilog.Settings.Configuration
 nuget Serilog.Extensions.Hosting
 
+nuget NATS.Client.Core
 nuget NATS.Net
 nuget MediatR
 nuget MediatR.Contracts

@@ -9,7 +9,7 @@ namespace K4os.NatsTransit.OpenTelemetry;
 
 public class NatsMessageTracer: INatsMessageTracer
 {
-    private TextMapPropagator Propagator => Propagators.DefaultTextMapPropagator;
+    private static TextMapPropagator Propagator => Propagators.DefaultTextMapPropagator;
 
     public void Inject(ActivityContext? context, ref NatsHeaders? headers)
     {

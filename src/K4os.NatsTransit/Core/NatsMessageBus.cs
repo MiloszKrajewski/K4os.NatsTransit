@@ -15,9 +15,9 @@ public class NatsMessageBus: IHostedService, IMessageBus
 
     private readonly NatsToolbox _toolbox;
 
-    private readonly INatsContextAction[] _actions;
-    private readonly INatsSourceHandler[] _sources;
-    private readonly INatsTargetHandler[] _targets;
+    private INatsContextAction[]? _actions;
+    private INatsSourceHandler[]? _sources;
+    private readonly NatsTargetSelector _targets;
     private readonly IMessageDispatcher _dispatcher;
 
     private readonly TaskCompletionSource _started = new();
@@ -44,7 +44,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         _dispatcher = dispatcher;
         _actions = actions.ToArray();
         _sources = sources.Select(s => s.CreateHandler(toolbox)).ToArray();
-        _targets = targets.Select(s => s.CreateHandler(toolbox)).ToArray();
+        _targets = new NatsTargetSelector(targets.Select(s => s.CreateHandler(toolbox)));
         _cts = new CancellationTokenSource();
     }
 
@@ -60,7 +60,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     {
         ArgumentNullException.ThrowIfNull(message, nameof(message));
         WaitForStartup();
-        return FindTarget(message).Handle(token, message);
+        return _targets.FindTarget(message).Handle(token, message);
     }
 
     [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
@@ -88,31 +88,25 @@ public class NatsMessageBus: IHostedService, IMessageBus
         }
     }
 
-    private INatsTargetHandler FindTarget(object command)
-    {
-        var commandType = command.GetType();
-        var candidates = _targets
-            .Where(t => t.CanHandleType(commandType))
-            .ToArray();
-        return candidates.FirstOrDefault(t => t.CanHandle(null, command)) ??
-            throw new InvalidOperationException($"No target found for message {commandType.Name}");
-    }
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         try
         {
             var token = _cts.Token;
 
-            foreach (var action in _actions)
+            foreach (var action in _actions ?? [])
             {
                 await action.Configure(_toolbox);
             }
 
-            foreach (var source in _sources)
+            _actions = null;
+
+            foreach (var source in _sources ?? [])
             {
                 _ = source.Subscribe(token, _dispatcher);
             }
+            
+            _sources = null;
 
             _started.TrySetResult();
         }

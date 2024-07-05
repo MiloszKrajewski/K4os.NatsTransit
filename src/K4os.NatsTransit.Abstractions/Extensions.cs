@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace K4os.NatsTransit.Abstractions.Internal;
+namespace K4os.NatsTransit.Abstractions;
 
 internal static class Extensions
 {
