@@ -2,16 +2,13 @@
   
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>true</IsPackable>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\K4os.NatsTransit.Abstractions\K4os.NatsTransit.Abstractions.csproj" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Folder Include="Tools\" />
   </ItemGroup>
   
   <Import Project="$(PublicAssemblyProps)" />

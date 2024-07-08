@@ -6,7 +6,7 @@ namespace FlowDemo.Entities;
 // dotnet ef migrations --project .\src\FlowDemo.Entities\ add InitialCreate -- "Host=localhost;Username=test;Password=Test!123"
 // dotnet ef database --project .\src\FlowDemo.Entities\ update -- "Host=localhost;Username=test;Password=Test!123"
 
-public class OrdersDbContextFactory : IDesignTimeDbContextFactory<OrdersDbContext>
+public class OrdersDbContextFactory: IDesignTimeDbContextFactory<OrdersDbContext>
 {
     public OrdersDbContext CreateDbContext(string[] args)
     {

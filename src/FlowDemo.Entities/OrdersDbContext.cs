@@ -18,7 +18,7 @@ public class OrdersDbContext: DbContext
         order
             .Property(o => o.CreatedOn)
             .HasConversion(
-                v => v.ToUniversalTime(), 
+                v => v.ToUniversalTime(),
                 v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
         order.Property(o => o.RowVersion).IsConcurrencyToken();
     }
