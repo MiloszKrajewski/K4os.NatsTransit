@@ -26,6 +26,30 @@ public class Disposable: IDisposable
 	public void Dispose() => _action?.Invoke();
 }
 
+/// <summary>
+/// Adhoc disposable from action.
+/// </summary>
+public class AsyncDisposable: IAsyncDisposable
+{
+	private readonly Func<Task>? _action;
+	
+	/// <summary>Creates new adhoc disposable from action.</summary>
+	/// <param name="action">Action.</param>
+	/// <returns>New disposable.</returns>
+	public static IAsyncDisposable Create(Func<Task>? action) => new AsyncDisposable(action);
+	
+	/// <summary>Empty disposable.</summary>
+	public static IAsyncDisposable Empty { get; } = new AsyncDisposable(null);
+
+	/// <summary>Creates new adhoc disposable from action.</summary>
+	/// <param name="action">Action.</param>
+	public AsyncDisposable(Func<Task>? action) => _action = action;
+
+	/// <inheritdoc/>
+	public ValueTask DisposeAsync() => 
+		_action is null ? default : new ValueTask(_action());
+}
+
 /// <summary>A disposable collection of disposables.</summary>
 /// <seealso cref="IDisposable" />
 public class DisposableBag: IDisposable

@@ -14,9 +14,6 @@ public static class Extensions
     private static T ThrowArgumentNull<T>(string? expression) => 
         throw new ArgumentNullException(expression);
     
-    public static TimeSpan Times(this TimeSpan timeSpan, double factor) =>
-        TimeSpan.FromTicks((long)(timeSpan.Ticks * factor));
-
     public static T NotLessThan<T>(this T value, T min) where T: IComparable<T> =>
         Comparer<T>.Default.Compare(value, min) < 0 ? min : value;
 

@@ -10,6 +10,10 @@
     <ProjectReference Include="..\K4os.NatsTransit.Abstractions\K4os.NatsTransit.Abstractions.csproj" />
   </ItemGroup>
   
+  <ItemGroup>
+    <Folder Include="Tools\" />
+  </ItemGroup>
+  
   <Import Project="$(PublicAssemblyProps)" />
   <Import Project="..\..\.paket\Paket.Restore.targets" />
   
