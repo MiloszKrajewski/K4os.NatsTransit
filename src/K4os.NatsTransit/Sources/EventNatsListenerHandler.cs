@@ -51,12 +51,12 @@ public class EventNatsListenerHandler<TEvent>: INatsSourceHandler
         _activityName = $"Listen<{eventName}>({_subject})";
     }
 
-    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
+    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         var agents = Enumerable
             .Range(0, _concurrency)
-            .Select(_ => Agent.Launch(c => Consume(c, mediator), Log, cts.Token));
+            .Select(_ => Agent.Launch(c => Consume(c, dispatcher), Log, cts.Token));
         _disposables.AddMany(agents);
         return Disposable.Create(cts.Cancel);
     }

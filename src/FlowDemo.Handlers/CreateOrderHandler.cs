@@ -48,7 +48,7 @@ public class CreateOrderHandler: IRequestHandler<CreateOrderCommand>
         var order = new OrderEntity {
             OrderId = orderId,
             CreatedOn = DateTime.UtcNow,
-            CreatedBy = request.RequestedBy ?? "anonymous@nowhere.org"
+            CreatedBy = request.RequestedBy!,
         };
         _dbContext.Orders.Add(order);
         await _dbContext.SaveChangesAsync(token);

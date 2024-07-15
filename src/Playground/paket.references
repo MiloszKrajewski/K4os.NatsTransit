@@ -1,0 +1,7 @@
+Microsoft.Extensions.DependencyInjection
+
+NATS.Net
+
+Serilog
+Serilog.Extensions.Hosting
+Serilog.Sinks.Console

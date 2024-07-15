@@ -58,12 +58,12 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _activityName = $"Subscribe<{requestType},{responseType}>({_subject})";
     }
 
-    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher mediator)
+    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher)
     {
         var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
         var agents = Enumerable
             .Range(0, _concurrency)
-            .Select(_ => Agent.Launch(c => Consume(c, mediator), Log, cts.Token));
+            .Select(_ => Agent.Launch(c => Consume(c, dispatcher), Log, cts.Token));
         _disposables.AddMany(agents);
         return Disposable.Create(cts.Cancel);
     }

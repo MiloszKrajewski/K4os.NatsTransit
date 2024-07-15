@@ -29,7 +29,10 @@ services:
   
   dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:8.0.0
+    # image: snehapar9/aspire-dashboard:v19
     # image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
+    environment:
+      - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
     ports:
       - 18888:18888
       - 4317:18889
