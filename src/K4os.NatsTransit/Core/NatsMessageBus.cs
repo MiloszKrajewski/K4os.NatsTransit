@@ -35,7 +35,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         IEnumerable<INatsTargetConfig> targets,
         IEnumerable<INatsSourceConfig> sources)
     {
-        Log = loggerFactory.CreateLogger<NatsMessageBus>();
+        Log = loggerFactory.CreateLogger(GetType());
         var toolbox = _toolbox = new NatsToolbox(
             loggerFactory,
             connection, context,
@@ -70,22 +70,13 @@ public class NatsMessageBus: IHostedService, IMessageBus
         CancellationToken token = default)
     {
         WaitForStartup();
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
-        var tcs = new TaskCompletionSource<object?>();
-        var delay = Task.Delay(timeout ?? NatsConstants.ResponseTimeout, cts.Token);
-        var subscription = _toolbox.Events.Subscribe(new EventCapture(predicate, tcs));
-        try
-        {
-            var task = tcs.Task;
-            var done = await Task.WhenAny(delay, task);
-            if (done == delay) throw new TimeoutException("Waiting for event timed out");
-            return await task;
-        }
-        finally
-        {
-            subscription.Dispose();
-            cts.Cancel();
-        }
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
+        using var capture = new Capture<object>(predicate);
+        using var subscription = _toolbox.Events.Subscribe(capture);
+        using var delay = Task.Delay(timeout ?? NatsConstants.ResponseTimeout, cts.Token);
+        var done = await Task.WhenAny(delay, capture.Task);
+        if (done == delay) throw new TimeoutException("Waiting for event timed out");
+        return await capture.Task;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -99,14 +90,14 @@ public class NatsMessageBus: IHostedService, IMessageBus
                 await action.Configure(_toolbox);
             }
 
-            _actions = null;
+            _actions = null; // no longer needed
 
             foreach (var source in _sources ?? [])
             {
                 _ = source.Subscribe(token, _dispatcher);
             }
             
-            _sources = null;
+            _sources = null; // no longer needed
 
             _started.TrySetResult();
         }
