@@ -20,7 +20,7 @@ services.AddSingleton<IDistributedLocks>(
     p => new NatsDistributedLocks(
         p.GetRequiredService<ILoggerFactory>(), 
         p.GetRequiredService<NatsKVContext>(),
-        new NetsDistributionLocksConfig {
+        new NetsDistributedLocksConfig {
             StoreName = "locks2",
         }));
 

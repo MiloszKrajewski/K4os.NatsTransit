@@ -7,6 +7,7 @@ nuget Microsoft.Extensions.DependencyInjection.Abstractions
 nuget Microsoft.Extensions.Logging
 nuget Microsoft.Extensions.Logging.Abstractions
 nuget Microsoft.Extensions.Hosting
+nuget Microsoft.Extensions.Http.Resilience
 
 nuget Microsoft.AspNetCore.OpenApi
 nuget Swashbuckle.AspNetCore
@@ -24,13 +25,16 @@ nuget Serilog.Extensions.Hosting
 
 nuget NATS.Client.Core
 nuget NATS.Net
+
 nuget MediatR
 nuget MediatR.Contracts
 nuget Polly
+nuget Newtonsoft.Json
 
 nuget K4os.Async.Toys
 nuget K4os.KnownTypes
 nuget K4os.KnownTypes.SystemTextJson
+nuget K4os.KnownTypes.NewtonsoftJson
 
 nuget K4os.Xpovoc.PgSql
 nuget K4os.Xpovoc.Abstractions
@@ -40,7 +44,6 @@ nuget Microsoft.EntityFrameworkCore.Design
 nuget Microsoft.EntityFrameworkCore
 nuget Npgsql.EntityFrameworkCore.PostgreSQL
 
-nuget Microsoft.Extensions.Http.Resilience
 nuget OpenTelemetry.Exporter.OpenTelemetryProtocol
 nuget OpenTelemetry.Extensions.Hosting
 nuget OpenTelemetry.Instrumentation.AspNetCore

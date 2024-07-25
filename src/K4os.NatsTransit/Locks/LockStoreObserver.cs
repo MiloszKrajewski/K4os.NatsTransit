@@ -20,7 +20,7 @@ public class LockStoreObserver: IDisposable
     private async Task Loop(INatsKVStore store, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        
+
         var stream = Observe(store, token);
         while (await stream.MoveNextAsync())
         {
@@ -48,18 +48,41 @@ public class LockStoreObserver: IDisposable
         if (_locks.TryRemove(key, out var tcs))
             tcs.TrySetResult();
     }
-    
+
     private void PurgeAll()
     {
-        foreach (var tcs in _locks.Values)
-            tcs.TrySetCanceled();
-        _locks.Clear();
+        // it is not about purging them all, but to purge the ones
+        // which are in dictionary at the time of calling this method
+        // all new ones will start cancelled immediately after creation
+        foreach (var key in _locks.Keys.ToArray())
+        {
+            if (_locks.TryRemove(key, out var tcs))
+                tcs.TrySetCanceled();
+        }
     }
 
     public Task WaitFor(string key)
     {
         _cts.Token.ThrowIfCancellationRequested();
-        return _locks.AddOrUpdate(key, _ => new TaskCompletionSource(), (_, tcs) => tcs).Task;
+        var added = _locks.AddOrUpdate(key, _ => new TaskCompletionSource(), (_, tcs) => tcs);
+
+        // most of the time we return here,
+        // we have a completion source, and it has not been cancelled - end of story
+        if (!_cts.IsCancellationRequested)
+            return added.Task;
+
+        // ok, but it seems it has been cancelled in the meantime
+        added.TrySetCanceled();
+
+        // we need to remove it from the dictionary,
+        // but we cannot 100% guarantee that it was
+        // not replaced in the meantime
+        if (!_locks.TryRemove(key, out var removed))
+            return added.Task;
+
+        // most likely added == removed but not guaranteed
+        removed.TrySetCanceled();
+        return removed.Task;
     }
 
     public void Dispose()

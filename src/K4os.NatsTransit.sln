@@ -60,6 +60,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Application", "Application"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground.csproj", "{6C461334-0349-4C02-9475-D94A66F9DB84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "K4os.NatsTransit.NewtonsoftJson", "K4os.NatsTransit.NewtonsoftJson\K4os.NatsTransit.NewtonsoftJson.csproj", "{2DC1DD8E-50C8-456A-83CF-746C19628236}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -112,6 +114,10 @@ Global
 		{6C461334-0349-4C02-9475-D94A66F9DB84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6C461334-0349-4C02-9475-D94A66F9DB84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6C461334-0349-4C02-9475-D94A66F9DB84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2DC1DD8E-50C8-456A-83CF-746C19628236}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2DC1DD8E-50C8-456A-83CF-746C19628236}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2DC1DD8E-50C8-456A-83CF-746C19628236}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2DC1DD8E-50C8-456A-83CF-746C19628236}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -131,5 +137,6 @@ Global
 		{A5CA7A71-A858-43E0-98B9-100308F41D19} = {392324C5-10F2-466B-B813-49172BF747DD}
 		{F6C8643E-EB31-47CF-B4AC-ED146465CDC5} = {392324C5-10F2-466B-B813-49172BF747DD}
 		{6C461334-0349-4C02-9475-D94A66F9DB84} = {392324C5-10F2-466B-B813-49172BF747DD}
+		{2DC1DD8E-50C8-456A-83CF-746C19628236} = {D48D47BC-DC60-4437-9F87-CAD037302712}
 	EndGlobalSection
 EndGlobal

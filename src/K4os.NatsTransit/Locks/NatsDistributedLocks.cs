@@ -25,7 +25,7 @@ public class NatsDistributedLocks: IDistributedLocks, IDisposable
     public NatsDistributedLocks(
         ILoggerFactory loggerFactory,
         INatsKVContext context,
-        NetsDistributionLocksConfig options)
+        NetsDistributedLocksConfig options)
     {
         Log = loggerFactory.CreateLogger(GetType());
         

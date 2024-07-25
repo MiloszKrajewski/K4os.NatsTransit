@@ -77,7 +77,6 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         string stream, string consumer, bool applicationSuffix, string[]? subjects = null) =>
         Consumer(stream, consumer, applicationSuffix ? _applicationName : null, subjects);
 
-    // TODO: concurrency?
     public void QueryTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
