@@ -2,8 +2,11 @@
 
 namespace K4os.NatsTransit.Abstractions;
 
-public interface INatsSerializerFactory
+public interface INatsSerializerXFactory
 {
-    INatsSerialize<T> PayloadSerializer<T>();
-    INatsDeserialize<T> PayloadDeserializer<T>();
+    INatsSerialize<T>? PayloadSerializer<T>();
+    INatsDeserialize<T>? PayloadDeserializer<T>();
+    IInboundAdapter<T>? InboundAdapter<T>();
+    IOutboundAdapter<T>? OutboundAdapter<T>();
+    IExceptionSerializer? ExceptionSerializer();
 }

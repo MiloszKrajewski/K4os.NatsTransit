@@ -183,7 +183,7 @@ public static class ApplicationSetupExtensions
         Action<IFluentNats> configure)
     {
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
-        services.AddSingleton<IExceptionSerializer, FakeExceptionSerializer>();
+        services.AddSingleton<IExceptionSerializer, DumbExceptionSerializer>();
         services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
         services.AddSingleton<INatsMessageTracer, NatsMessageTracer>();
         services.UseNatsMessageBus(configure);

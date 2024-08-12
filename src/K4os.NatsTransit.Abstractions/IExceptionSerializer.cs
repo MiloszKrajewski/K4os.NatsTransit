@@ -6,8 +6,9 @@ public interface IExceptionSerializer
     public Exception Deserialize(string payload);
 }
 
-public class FakeExceptionSerializer: IExceptionSerializer
+public class DumbExceptionSerializer: IExceptionSerializer
 {
+    public static DumbExceptionSerializer Instance { get; } = new();
     public string Serialize(Exception exception) => exception.Message;
     public Exception Deserialize(string payload) => new(payload);
 }

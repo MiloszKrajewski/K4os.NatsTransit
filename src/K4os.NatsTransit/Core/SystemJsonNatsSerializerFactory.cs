@@ -5,7 +5,7 @@ using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Core;
 
-public class SystemJsonNatsSerializerFactory: INatsSerializerFactory
+public class SystemJsonNatsSerializerFactory: INatsSerializerXFactory
 {
     private readonly JsonSerializerOptions? _options;
 
@@ -14,7 +14,12 @@ public class SystemJsonNatsSerializerFactory: INatsSerializerFactory
 
     public INatsSerialize<T> PayloadSerializer<T>() => new Instance<T>(_options);
     public INatsDeserialize<T> PayloadDeserializer<T>() => new Instance<T>(_options);
-    
+
+    public IInboundAdapter<T>? InboundAdapter<T>() => null;
+    public IOutboundAdapter<T>? OutboundAdapter<T>() => null;
+
+    public IExceptionSerializer? ExceptionSerializer() => null;
+
     public class Instance<T>: INatsSerialize<T>, INatsDeserialize<T>
     {
         private readonly JsonSerializerOptions? _options;

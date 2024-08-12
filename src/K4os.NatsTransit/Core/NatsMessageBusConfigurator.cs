@@ -22,14 +22,13 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext context,
-        INatsSerializerFactory serializerFactory,
-        IExceptionSerializer exceptionSerializer,
+        INatsSerializerXFactory serializerFactory,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer) =>
         new(
             loggerFactory,
             connection, context,
-            serializerFactory, exceptionSerializer,
+            serializerFactory,
             dispatcher,
             messageTracer,
             _actions, _targets, _sources);

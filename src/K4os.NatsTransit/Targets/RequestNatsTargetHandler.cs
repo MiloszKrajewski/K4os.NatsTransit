@@ -37,10 +37,8 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
         _subject = config.Subject;
         _timeout = config.Timeout ?? NatsConstants.ResponseTimeout;
         _toolbox = toolbox;
-        _serializer = toolbox.Serializer<TRequest>();
-        _deserializer = toolbox.Deserializer<TResponse>();
-        _requestAdapter = config.RequestAdapter;
-        _responseAdapter = config.ResponseAdapter;
+        (_serializer, _requestAdapter) = toolbox.Serializer<TRequest>();
+        (_deserializer, _responseAdapter) = toolbox.Deserializer<TResponse>();
         var requestType = typeof(TRequest).Name;
         var responseType = typeof(TResponse).Name;
         _activityName = $"Request<{requestType},{responseType}>({_subject})";
