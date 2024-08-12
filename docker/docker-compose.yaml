@@ -28,7 +28,7 @@ services:
       - 8025:8025
   
   dashboard:
-    image: mcr.microsoft.com/dotnet/aspire-dashboard:8.0.0
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:8.1
     # image: snehapar9/aspire-dashboard:v19
     # image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
     environment:
