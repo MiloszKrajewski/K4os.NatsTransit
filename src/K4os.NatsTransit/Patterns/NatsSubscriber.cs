@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using Microsoft.Extensions.Logging;
@@ -44,7 +45,7 @@ public static class NatsSubscriber
         NatsToolbox toolbox,
         string subject,
         NatsSubscriber<TContext, TRequest, TResponse>.IEvents events,
-        InboundPair<TRequest> deserializer)
+        InboundAdapter<TRequest> deserializer)
         where TRequest: notnull =>
         new(toolbox, subject, events, deserializer);
 }
@@ -83,7 +84,7 @@ public class NatsSubscriber<TContext, TRequest, TResponse>
         NatsToolbox toolbox,
         string subject,
         IEvents events,
-        InboundPair<TRequest> deserializer)
+        InboundAdapter<TRequest> deserializer)
     {
         Log = toolbox.GetLoggerFor(this);
         _disposables = new DisposableBag();
@@ -111,7 +112,7 @@ public class NatsSubscriber<TContext, TRequest, TResponse>
         CancellationToken token,
         TContext context,
         INatsDeserialize<TPayload> deserializer,
-        IInboundAdapter<TPayload, TRequest> adapter)
+        IInboundTransformer<TPayload, TRequest> transformer)
     {
         var messages = _toolbox.SubscribeMany(token, _subject, deserializer);
         await foreach (var message in messages)
@@ -119,7 +120,7 @@ public class NatsSubscriber<TContext, TRequest, TResponse>
             using var _ = _events.OnTrace(context, message.Headers);
             try
             {
-                var request = _toolbox.Unpack(message, adapter);
+                var request = _toolbox.Unpack(message, transformer);
                 var done = _events.OnHandle(token, context, message, request);
                 var response = await done;
                 await _events.OnSuccess(token, context, message, request, response);

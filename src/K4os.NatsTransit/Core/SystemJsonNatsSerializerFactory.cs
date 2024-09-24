@@ -1,24 +1,24 @@
 ﻿using System.Buffers;
 using System.Text.Json;
-using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Core;
 
-public class SystemJsonNatsSerializerFactory: INatsSerializers
+public class SystemJsonNatsSerializerFactory: INatsSerializerFactory
 {
     private readonly JsonSerializerOptions? _options;
 
     public SystemJsonNatsSerializerFactory(JsonSerializerOptions? options) => 
         _options = options;
 
-    public INatsSerialize<T> PayloadSerializer<T>() => new Instance<T>(_options);
-    public INatsDeserialize<T> PayloadDeserializer<T>() => new Instance<T>(_options);
+    public OutboundAdapter<T> GetOutboundAdapter<T>() => 
+        new(new Instance<T>(_options));
 
-    public IInboundAdapter<T>? InboundAdapter<T>() => null;
-    public IOutboundAdapter<T>? OutboundAdapter<T>() => null;
+    public InboundAdapter<T> GetInboundAdapter<T>() => 
+        new(new Instance<T>(_options));
 
-    public IExceptionSerializer? ExceptionSerializer() => null;
+    public IExceptionSerializer? GetExceptionSerializer() => null;
 
     public class Instance<T>: INatsSerialize<T>, INatsDeserialize<T>
     {

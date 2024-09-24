@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace K4os.NatsTransit.Abstractions;
+namespace K4os.NatsTransit.Abstractions.MessageBus;
 
 public interface IFluentNatsTopic
 {

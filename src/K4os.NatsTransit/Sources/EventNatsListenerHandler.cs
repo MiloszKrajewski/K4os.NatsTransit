@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -24,7 +26,7 @@ public class EventNatsListenerHandler<TEvent>:
 
     public record Config(
         string Subject,
-        InboundPair<TEvent>? InboundPair = null,
+        InboundAdapter<TEvent>? InboundPair = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {

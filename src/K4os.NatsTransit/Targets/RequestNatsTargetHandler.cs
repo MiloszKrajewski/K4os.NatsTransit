@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -18,8 +19,8 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
     public record Config(
         string Subject,
         TimeSpan? Timeout = null,
-        OutboundPair<TRequest>? OutboundPair = null,
-        InboundPair<TResponse>? InboundPair = null
+        OutboundAdapter<TRequest>? OutboundPair = null,
+        InboundAdapter<TResponse>? InboundPair = null
     ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>

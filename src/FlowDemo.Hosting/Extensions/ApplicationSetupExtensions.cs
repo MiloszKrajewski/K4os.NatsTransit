@@ -4,6 +4,8 @@ using FlowDemo.Hosting.Services;
 using K4os.KnownTypes;
 using K4os.KnownTypes.SystemTextJson;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.OpenTelemetry;
@@ -182,7 +184,7 @@ public static class ApplicationSetupExtensions
         IServiceCollection services,
         Action<IFluentNats> configure)
     {
-        services.AddSingleton<INatsSerializers, SystemJsonNatsSerializerFactory>();
+        services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
         services.AddSingleton<IExceptionSerializer, DumbExceptionSerializer>();
         services.AddSingleton<IMessageDispatcher, ScopedMessageDispatcher>();
         services.AddSingleton<INatsMessageTracer, NatsMessageTracer>();

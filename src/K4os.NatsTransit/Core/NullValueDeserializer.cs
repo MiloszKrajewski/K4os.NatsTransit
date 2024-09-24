@@ -3,7 +3,7 @@ using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Core;
 
-public class NullValueDeserializer: INatsDeserialize<object?>
+internal class NullValueDeserializer: INatsDeserialize<object?>
 {
     public static NullValueDeserializer Default { get; } = new();
 

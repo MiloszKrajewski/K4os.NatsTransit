@@ -2,6 +2,8 @@
 using System.Diagnostics.CodeAnalysis;
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,7 +24,7 @@ public class NatsToolbox
     private readonly ILoggerFactory _loggerFactory;
     private readonly INatsConnection _connection;
     private readonly INatsJSContext _jetStream;
-    private readonly INatsSerializers _serializerFactory;
+    private readonly INatsSerializerFactory _serializerFactory;
     private readonly IExceptionSerializer _exceptionSerializer;
     private readonly ObservableEvent<INotification> _eventObserver;
     private readonly INatsMessageTracer _messageTracer;
@@ -31,7 +33,7 @@ public class NatsToolbox
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext jetStream,
-        INatsSerializers serializerFactory,
+        INatsSerializerFactory serializerFactory,
         INatsMessageTracer? messageTracer = null)
     {
         _loggerFactory = loggerFactory;
@@ -39,7 +41,7 @@ public class NatsToolbox
         _jetStream = jetStream;
         _serializerFactory = serializerFactory;
         _exceptionSerializer =
-            serializerFactory.ExceptionSerializer() ??
+            serializerFactory.GetExceptionSerializer() ??
             DumbExceptionSerializer.Instance;
         _eventObserver = new ObservableEvent<INotification>();
         _messageTracer = messageTracer ?? NullMessageTracer.Instance;
@@ -49,8 +51,8 @@ public class NatsToolbox
     public INatsConnection Connection => _connection;
     public INatsJSContext JetStream => _jetStream;
 
-    public OutboundPair<T> Serializer<T>() => _serializerFactory.CreateSerializer<T>();
-    public InboundPair<T> Deserializer<T>() => _serializerFactory.CreateDeserializer<T>();
+    public OutboundAdapter<T> Serializer<T>() => _serializerFactory.GetOutboundAdapter<T>();
+    public InboundAdapter<T> Deserializer<T>() => _serializerFactory.GetInboundAdapter<T>();
 
     public IObservable<INotification> Events => _eventObserver;
     
@@ -63,7 +65,7 @@ public class NatsToolbox
 
     public TMessage Unpack<TPayload, TMessage>(
         Exception? error, string subject, NatsHeaders? headers, TPayload? data,
-        IInboundAdapter<TPayload, TMessage> adapter)
+        IInboundTransformer<TPayload, TMessage> transformer)
     {
         error?.Rethrow();
         
@@ -72,7 +74,7 @@ public class NatsToolbox
         
         exception?.Rethrow();
 
-        var response = adapter.Adapt(subject, headers, data.ThrowIfNull());
+        var response = transformer.Transform(subject, headers, data.ThrowIfNull());
         return response;
     }
 
@@ -109,12 +111,12 @@ public class NatsToolbox
         CancellationToken token,
         string subject, TMessage message,
         INatsSerialize<TPayload> serializer,
-        IOutboundAdapter<TMessage, TPayload> adapter)
+        IOutboundTransformer<TMessage, TPayload> transformer)
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(message));
         TryAddTrace(ref headers);
-        var payload = adapter.Adapt(subject, ref headers, message);
+        var payload = transformer.Adapt(subject, ref headers, message);
         return _connection.Publish(token, subject, serializer, headers, payload);
     }
 
@@ -133,13 +135,13 @@ public class NatsToolbox
         CancellationToken token,
         string subject, TRequest request, string replySubject,
         INatsSerialize<TPayload> serializer,
-        IOutboundAdapter<TRequest, TPayload> adapter)
+        IOutboundTransformer<TRequest, TPayload> transformer)
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.ReplyToHeaderName, replySubject);
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
         TryAddTrace(ref headers);
-        var payload = adapter.Adapt(subject, ref headers, request);
+        var payload = transformer.Adapt(subject, ref headers, request);
         return _jetStream.Publish(token, subject, serializer, headers, payload);
     }
 
@@ -147,14 +149,14 @@ public class NatsToolbox
         CancellationToken token,
         string subject, TRequest request,
         INatsSerialize<TRequestPayload> serializer,
-        IOutboundAdapter<TRequest, TRequestPayload> outAdapter,
+        IOutboundTransformer<TRequest, TRequestPayload> outboundTransformer,
         INatsDeserialize<TResponsePayload> deserializer,
         TimeSpan timeout)
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
         TryAddTrace(ref headers);
-        var payload = outAdapter.Adapt(subject, ref headers, request);
+        var payload = outboundTransformer.Adapt(subject, ref headers, request);
         return _connection.Request(token, subject, serializer, deserializer, timeout, headers, payload);
     }
 
@@ -162,12 +164,12 @@ public class NatsToolbox
         CancellationToken token,
         NatsMsg<TRequest> request, TResponse response,
         INatsSerialize<TPayload> serializer,
-        IOutboundAdapter<TResponse, TPayload> adapter)
+        IOutboundTransformer<TResponse, TPayload> transformer)
     {
         NatsHeaders? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
         TryAddTrace(ref headers);
-        var payload = adapter.Adapt(request.Subject, ref headers, response);
+        var payload = transformer.Adapt(request.Subject, ref headers, response);
         return request.Respond(token, serializer, headers, payload);
     }
 

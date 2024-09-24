@@ -1,4 +1,5 @@
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.Xpovoc.Abstractions;
 using MediatR;
 

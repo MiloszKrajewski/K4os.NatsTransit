@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -21,12 +23,12 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
     private readonly string _requestType;
     private readonly int _concurrency;
     private readonly NatsSubscriber<IMessageDispatcher, TRequest, Result<TResponse>> _consumer;
-    private readonly OutboundPair<TResponse> _serializer;
+    private readonly OutboundAdapter<TResponse> _serializer;
 
     public record Config(
         string Subject,
-        InboundPair<TRequest>? InboundPair = null,
-        OutboundPair<TResponse>? OutboundPair = null,
+        InboundAdapter<TRequest>? InboundPair = null,
+        OutboundAdapter<TResponse>? OutboundPair = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {

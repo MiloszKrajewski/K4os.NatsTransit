@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using Microsoft.Extensions.Primitives;
 using NATS.Client.Core;
 using OpenTelemetry;

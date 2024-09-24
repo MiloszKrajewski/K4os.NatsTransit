@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using NATS.Client.Core;
@@ -10,8 +11,8 @@ public class NatsRequester
     public static NatsRequester<TRequest, TResponse> Create<TRequest, TResponse>(
         NatsToolbox toolbox, 
         TimeSpan timeout,
-        OutboundPair<TRequest> serializer, 
-        InboundPair<TResponse> deserializer) =>
+        OutboundAdapter<TRequest> serializer, 
+        InboundAdapter<TResponse> deserializer) =>
         new(toolbox, timeout, serializer, deserializer);
 }
 
@@ -23,7 +24,7 @@ public class NatsRequester<TRequest, TResponse>
 
     public NatsRequester(
         NatsToolbox toolbox, TimeSpan timeout, 
-        OutboundPair<TRequest> serializer, InboundPair<TResponse> deserializer)
+        OutboundAdapter<TRequest> serializer, InboundAdapter<TResponse> deserializer)
     {
         _toolbox = toolbox;
         _timeout = timeout;
@@ -40,9 +41,9 @@ public class NatsRequester<TRequest, TResponse>
         CancellationToken token,
         string subject, TRequest request,
         INatsSerialize<TRequestPayload> serializer,
-        IOutboundAdapter<TRequest, TRequestPayload> outboundAdapter,
+        IOutboundTransformer<TRequest, TRequestPayload> outboundTransformer,
         INatsDeserialize<TResponsePayload> deserializer,
-        IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
+        IInboundTransformer<TResponsePayload, TResponse> inboundTransformer)
     {
         // some context why it is done this way:
         // https://github.com/nats-io/nats.py/discussions/221
@@ -50,9 +51,9 @@ public class NatsRequester<TRequest, TResponse>
         var replySubject = $"$reply.{Guid.NewGuid():N}-{DateTime.UtcNow.Ticks:x16}";
         var subscription = _toolbox.SubscribeOne(token, replySubject, _timeout, deserializer);
         var responseTask = /* no await */subscription.FirstOrDefault(token);
-        await _toolbox.Request(token, subject, request, replySubject, serializer, outboundAdapter);
+        await _toolbox.Request(token, subject, request, replySubject, serializer, outboundTransformer);
         var response = await responseTask;
-        return _toolbox.Unpack(response, inboundAdapter);
+        return _toolbox.Unpack(response, inboundTransformer);
     }
     
     public Task<TResponse> Request(CancellationToken token, string subject, TRequest request) =>

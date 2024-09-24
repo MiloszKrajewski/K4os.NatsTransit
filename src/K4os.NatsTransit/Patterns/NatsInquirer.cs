@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using NATS.Client.Core;
 
@@ -8,7 +9,7 @@ public class NatsInquirer
 {
     public static NatsInquirer<TRequest, TResponse> Create<TRequest, TResponse>(
         NatsToolbox toolbox, TimeSpan timeout,
-        OutboundPair<TRequest> serializer, InboundPair<TResponse> deserializer) =>
+        OutboundAdapter<TRequest> serializer, InboundAdapter<TResponse> deserializer) =>
         new(toolbox, timeout, serializer, deserializer);
 }
 
@@ -21,8 +22,8 @@ public class NatsInquirer<TRequest, TResponse>
     public NatsInquirer(
         NatsToolbox toolbox,
         TimeSpan timeout,
-        OutboundPair<TRequest> serializer,
-        InboundPair<TResponse> deserializer)
+        OutboundAdapter<TRequest> serializer,
+        InboundAdapter<TResponse> deserializer)
     {
         _toolbox = toolbox;
         _timeout = timeout;
@@ -40,13 +41,13 @@ public class NatsInquirer<TRequest, TResponse>
         string subject,
         TRequest request,
         INatsSerialize<TRequestPayload> serializer,
-        IOutboundAdapter<TRequest, TRequestPayload> outboundAdapter,
+        IOutboundTransformer<TRequest, TRequestPayload> outboundTransformer,
         INatsDeserialize<TResponsePayload> deserializer,
-        IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
+        IInboundTransformer<TResponsePayload, TResponse> inboundTransformer)
     {
         var response = await _toolbox.Query(
-            token, subject, request, serializer, outboundAdapter, deserializer, _timeout);
-        return _toolbox.Unpack(response, inboundAdapter);
+            token, subject, request, serializer, outboundTransformer, deserializer, _timeout);
+        return _toolbox.Unpack(response, inboundTransformer);
     }
     
     public Task<TResponse> Query(CancellationToken token, string subject, TRequest request) =>

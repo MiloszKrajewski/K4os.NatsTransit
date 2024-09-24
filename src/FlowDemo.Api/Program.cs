@@ -1,6 +1,7 @@
 using FlowDemo.Hosting.Extensions;
 using FlowDemo.Messages;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
 

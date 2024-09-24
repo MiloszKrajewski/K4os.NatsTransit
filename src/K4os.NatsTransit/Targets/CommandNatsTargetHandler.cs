@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -17,7 +18,7 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public record Config(
         string Subject,
-        OutboundPair<TCommand>? OutboundPair = null
+        OutboundAdapter<TCommand>? OutboundPair = null
     ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>

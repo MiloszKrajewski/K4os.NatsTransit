@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
@@ -29,24 +30,24 @@ public static class NatsToolboxExtensions
         headers.TryGetHeaderString(NatsConstants.KnownTypeHeaderName);
 
     public static
-        ((INatsSerialize<T>, NullOutboundAdapter<T>)?, (NatsRawSerializer<IBufferWriter<byte>>, IOutboundAdapter<T>)?)
-        Unpack<T>(this OutboundPair<T> serializer) =>
+        ((INatsSerialize<T>, NullOutboundTransformer<T>)?, (NatsRawSerializer<IBufferWriter<byte>>, ICustomSerializer<T>)?)
+        Unpack<T>(this OutboundAdapter<T> serializer) =>
         serializer.Native is { } native
-            ? ((native, NullOutboundAdapter<T>.Default), null)
-            : (null, (NatsRawSerializer<IBufferWriter<byte>>.Default, serializer.Adapter.ThrowIfNull()));
+            ? ((native, NullOutboundTransformer<T>.Default), null)
+            : (null, (NatsRawSerializer<IBufferWriter<byte>>.Default, serializer.Custom.ThrowIfNull()));
 
     public static
-        ((INatsDeserialize<T>, NullInboundAdapter<T>)?, (NatsRawSerializer<IMemoryOwner<byte>>, IInboundAdapter<T>)?)
-        Unpack<T>(this InboundPair<T> deserializer) =>
+        ((INatsDeserialize<T>, NullInboundTransformer<T>)?, (NatsRawSerializer<IMemoryOwner<byte>>, ICustomDeserializer<T>)?)
+        Unpack<T>(this InboundAdapter<T> deserializer) =>
         deserializer.Native is { } native
-            ? ((native, NullInboundAdapter<T>.Default), null)
-            : (null, (NatsRawSerializer<IMemoryOwner<byte>>.Default, deserializer.Adapter.ThrowIfNull()));
+            ? ((native, NullInboundTransformer<T>.Default), null)
+            : (null, (NatsRawSerializer<IMemoryOwner<byte>>.Default, deserializer.Custom.ThrowIfNull()));
 
     public static ValueTask Publish<TMessage>(
         this NatsToolbox toolbox,
         CancellationToken token,
         string subject, TMessage payload,
-        OutboundPair<TMessage> serializer) =>
+        OutboundAdapter<TMessage> serializer) =>
         serializer.Unpack() switch {
             (var (s, a), null) => toolbox.Publish(token, subject, payload, s, a),
             (null, var (s, a)) => toolbox.Publish(token, subject, payload, s, a),
@@ -57,7 +58,7 @@ public static class NatsToolboxExtensions
         this NatsToolbox toolbox,
         CancellationToken token,
         NatsMsg<TRequest> request, TResponse payload,
-        OutboundPair<TResponse> serializer) =>
+        OutboundAdapter<TResponse> serializer) =>
         serializer.Unpack() switch {
             (var (s, a), null) => toolbox.Respond(token, request, payload, s, a),
             (null, var (s, a)) => toolbox.Respond(token, request, payload, s, a),
@@ -81,7 +82,7 @@ public static class NatsToolboxExtensions
         this NatsToolbox toolbox,
         CancellationToken token,
         string subject, TRequest request,
-        OutboundPair<TRequest> serializer,
+        OutboundAdapter<TRequest> serializer,
         INatsDeserialize<TResponsePayload> deserializer,
         TimeSpan timeout) =>
         serializer.Unpack() switch {
@@ -94,7 +95,7 @@ public static class NatsToolboxExtensions
         this NatsToolbox toolbox,
         CancellationToken token,
         string subject, TRequest request,
-        OutboundPair<TRequest> serializer,
+        OutboundAdapter<TRequest> serializer,
         TimeSpan timeout) =>
         serializer.Unpack() switch {
             (var (s, a), null) => toolbox.Query(token, subject, request, s, a, BinaryDeserializer, timeout),
@@ -105,27 +106,27 @@ public static class NatsToolboxExtensions
     public static TMessage Unpack<TPayload, TMessage>(
         this NatsToolbox toolbox,
         NatsMsg<TPayload> message,
-        IInboundAdapter<TPayload, TMessage> adapter)
+        IInboundTransformer<TPayload, TMessage> transformer)
     {
         message.EnsureSuccess();
-        return toolbox.Unpack(null, message.Subject, message.Headers, message.Data, adapter);
+        return toolbox.Unpack(null, message.Subject, message.Headers, message.Data, transformer);
     }
 
     public static TMessage Unpack<TPayload, TMessage>(
         this NatsToolbox toolbox, NatsJSMsg<TPayload> message,
-        IInboundAdapter<TPayload, TMessage> adapter)
+        IInboundTransformer<TPayload, TMessage> transformer)
     {
         message.EnsureSuccess();
-        return toolbox.Unpack(null, message.Subject, message.Headers, message.Data, adapter);
+        return toolbox.Unpack(null, message.Subject, message.Headers, message.Data, transformer);
     }
 
     public static TMessage Unpack<TMessage>(
         this NatsToolbox toolbox, NatsMsg<TMessage> message) =>
-        toolbox.Unpack(message, NullInboundAdapter<TMessage>.Default);
+        toolbox.Unpack(message, NullInboundTransformer<TMessage>.Default);
 
     public static TMessage Unpack<TMessage>(
         this NatsToolbox toolbox, NatsJSMsg<TMessage> message) =>
-        toolbox.Unpack(message, NullInboundAdapter<TMessage>.Default);
+        toolbox.Unpack(message, NullInboundTransformer<TMessage>.Default);
 
     [Obsolete("Use NoAck version")]
     public static ValueTask WaitAndKeepAlive<TRequest>(

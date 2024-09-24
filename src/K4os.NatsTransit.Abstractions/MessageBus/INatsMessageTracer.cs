@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using NATS.Client.Core;
 
-namespace K4os.NatsTransit.Abstractions;
+namespace K4os.NatsTransit.Abstractions.MessageBus;
 
 public interface INatsMessageTracer
 {

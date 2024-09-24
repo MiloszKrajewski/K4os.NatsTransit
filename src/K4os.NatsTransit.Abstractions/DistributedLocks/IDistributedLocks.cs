@@ -1,4 +1,4 @@
-﻿namespace K4os.NatsTransit.Abstractions;
+﻿namespace K4os.NatsTransit.Abstractions.DistributedLocks;
 
 public interface IDistributedLocks
 {

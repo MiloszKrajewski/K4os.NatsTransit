@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -25,7 +27,7 @@ public class CommandNatsSourceHandler<TCommand>:
 
     public record Config(
         string Stream, string Consumer,
-        InboundPair<TCommand>? InboundPair = null,
+        InboundAdapter<TCommand>? InboundPair = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {

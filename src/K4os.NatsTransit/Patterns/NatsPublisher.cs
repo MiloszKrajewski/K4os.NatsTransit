@@ -1,4 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using NATS.Client.Core;
 
@@ -9,7 +10,7 @@ namespace K4os.NatsTransit.Patterns;
 public class NatsPublisher
 {
     public static NatsPublisher<TMessage> Create<TMessage>(
-        NatsToolbox toolbox, OutboundPair<TMessage> serializer) =>
+        NatsToolbox toolbox, OutboundAdapter<TMessage> serializer) =>
         new(toolbox, serializer);
 }
 
@@ -18,7 +19,7 @@ public class NatsPublisher<TMessage>
     private readonly Func<CancellationToken, string, TMessage, ValueTask> _publisher;
     private readonly NatsToolbox _toolbox;
 
-    public NatsPublisher(NatsToolbox toolbox, OutboundPair<TMessage> serializer)
+    public NatsPublisher(NatsToolbox toolbox, OutboundAdapter<TMessage> serializer)
     {
         _toolbox = toolbox;
         _publisher = serializer.Unpack() switch {
@@ -32,8 +33,8 @@ public class NatsPublisher<TMessage>
         CancellationToken token,
         string subject, TMessage message,
         INatsSerialize<TPayload> serializer,
-        IOutboundAdapter<TMessage, TPayload> adapter) =>
-        _toolbox.Publish(token, subject, message, serializer, adapter);
+        IOutboundTransformer<TMessage, TPayload> transformer) =>
+        _toolbox.Publish(token, subject, message, serializer, transformer);
 
     public ValueTask Publish(CancellationToken token, string subject, TMessage message) =>
         _publisher(token, subject, message);

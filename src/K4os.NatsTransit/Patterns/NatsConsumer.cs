@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -14,7 +15,7 @@ public static class NatsConsumer
         NatsToolbox toolbox,
         string streamName, string consumerName,
         NatsConsumer<TContext, TRequest, TResponse>.IEvents events,
-        InboundPair<TRequest> deserializer)
+        InboundAdapter<TRequest> deserializer)
         where TRequest: notnull =>
         new(toolbox, streamName, consumerName, events, deserializer);
 }
@@ -69,7 +70,7 @@ public class NatsConsumer<TContext, TRequest, TResponse>
         NatsToolbox toolbox,
         string streamName, string consumerName,
         IEvents events,
-        InboundPair<TRequest> deserializer)
+        InboundAdapter<TRequest> deserializer)
     {
         Log = toolbox.GetLoggerFor(this);
         _disposables = new DisposableBag();
@@ -98,7 +99,7 @@ public class NatsConsumer<TContext, TRequest, TResponse>
         CancellationToken token,
         TContext context,
         INatsDeserialize<TPayload> deserializer,
-        IInboundAdapter<TPayload, TRequest> adapter)
+        IInboundTransformer<TPayload, TRequest> transformer)
     {
         var messages = await _toolbox.ConsumeMany(token, _streamName, _consumerName, deserializer);
         await foreach (var message in messages.WithCancellation(token))
@@ -106,7 +107,7 @@ public class NatsConsumer<TContext, TRequest, TResponse>
             using var _ = _events.OnTrace(context, message.Headers);
             try
             {
-                var request = _toolbox.Unpack(message, adapter);
+                var request = _toolbox.Unpack(message, transformer);
                 var done = _events.OnHandle(token, context, message, request);
                 await message.WaitAndKeepAliveNoAck(done, token);
                 var response = await done;

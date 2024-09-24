@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Patterns;
-using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,7 +28,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext jetStream,
-        INatsSerializers serializerFactory,
+        INatsSerializerFactory serializerFactory,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer,
         IEnumerable<INatsContextAction> actions,
