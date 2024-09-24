@@ -1,8 +1,9 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Patterns;
 using MediatR;
-using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Targets;
 
@@ -13,18 +14,14 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
 {
     private readonly NatsToolbox _toolbox;
     private readonly string _subject;
-    private readonly TimeSpan _timeout;
-    private readonly INatsSerialize<TRequest> _serializer;
-    private readonly INatsDeserialize<TResponse> _deserializer;
-    private readonly IOutboundAdapter<TRequest>? _requestAdapter;
-    private readonly IInboundAdapter<TResponse>? _responseAdapter;
     private readonly string _activityName;
+    private readonly NatsInquirer<TRequest, TResponse> _requester;
 
     public record Config(
         string Subject,
         TimeSpan? Timeout = null,
-        IOutboundAdapter<TRequest>? RequestAdapter = null,
-        IInboundAdapter<TResponse>? ResponseAdapter = null
+        OutboundPair<TRequest>? RequestAdapter = null,
+        InboundPair<TResponse>? ResponseAdapter = null
     ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>
@@ -33,50 +30,26 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
 
     public QueryNatsTargetHandler(NatsToolbox toolbox, Config config)
     {
-        _subject = config.Subject;
-        _timeout = config.Timeout ?? NatsConstants.ResponseTimeout;
         _toolbox = toolbox;
-        _serializer = toolbox.Serializer<TRequest>();
-        _deserializer = toolbox.Deserializer<TResponse>();
-        _requestAdapter = config.RequestAdapter;
-        _responseAdapter = config.ResponseAdapter;
-        var requestType = typeof(TRequest).Name;
-        var responseType = typeof(TResponse).Name;
-        _activityName = $"Request<{requestType},{responseType}>({_subject})";
+        _subject = config.Subject;
+        var timeout = config.Timeout ?? NatsConstants.ResponseTimeout;
+        var serializer = config.RequestAdapter ?? toolbox.Serializer<TRequest>();
+        var deserializer = config.ResponseAdapter ?? toolbox.Deserializer<TResponse>();
+        _activityName = GetActivityName(config);
+        _requester = NatsInquirer.Create(toolbox, timeout, serializer, deserializer);
     }
 
-    // https://github.com/nats-io/nats.py/discussions/221
+    private static string GetActivityName(Config config)
+    {
+        var requestType = typeof(TRequest).GetFriendlyName();
+        var responseType = typeof(TResponse).GetFriendlyName();
+        var subject = config.Subject;
+        return $"Request<{requestType},{responseType}>({subject})";
+    }
 
-    public override Task<TResponse?> Handle(CancellationToken token, TRequest request) =>
-        (_requestAdapter, _responseAdapter) switch {
-            (null, null) => Handle(
-                token, request, 
-                _serializer, NullOutboundAdapter, 
-                _deserializer, NullInboundAdapter),
-            ({ } requestAdapter, null) => Handle(
-                token, request, 
-                BinarySerializer, requestAdapter, 
-                _deserializer, NullInboundAdapter),
-            (null, { } responseAdapter) => Handle(
-                token, request, 
-                _serializer, NullOutboundAdapter, 
-                BinaryDeserializer, responseAdapter),
-            ({ } requestAdapter, { } responseAdapter) => Handle(
-                token, request, 
-                BinarySerializer, requestAdapter, 
-                BinaryDeserializer, responseAdapter),
-        };
-    
-    public async Task<TResponse?> Handle<TRequestPayload, TResponsePayload>(
-        CancellationToken token, TRequest request,
-        INatsSerialize<TRequestPayload> serializer,
-        IOutboundAdapter<TRequest, TRequestPayload> outboundAdapter,
-        INatsDeserialize<TResponsePayload> deserializer,
-        IInboundAdapter<TResponsePayload, TResponse> inboundAdapter)
+    public override async Task<TResponse> Handle(CancellationToken token, TRequest request)
     {
         using var _ = _toolbox.SendActivity(_activityName, true);
-        var response = await _toolbox.Query(
-            token, _subject, request, serializer, outboundAdapter, deserializer, _timeout);
-        return _toolbox.Unpack(response, inboundAdapter);
+        return await _requester.Query(token, _subject, request);
     }
 }

@@ -5,7 +5,7 @@ using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Core;
 
-public class SystemJsonNatsSerializerFactory: INatsSerializerXFactory
+public class SystemJsonNatsSerializerFactory: INatsSerializers
 {
     private readonly JsonSerializerOptions? _options;
 

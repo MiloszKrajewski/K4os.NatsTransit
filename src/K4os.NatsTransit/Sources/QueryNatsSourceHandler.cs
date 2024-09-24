@@ -1,8 +1,8 @@
-﻿using System.Buffers;
-using K4os.Async.Toys;
+﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Patterns;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -10,31 +10,23 @@ using NATS.Client.Core;
 namespace K4os.NatsTransit.Sources;
 
 public class QueryNatsSourceHandler<TRequest, TResponse>:
+    NatsSubscriber<IMessageDispatcher, TRequest, Result<TResponse>>.IEvents,
     INatsSourceHandler
     where TRequest: IRequest<TResponse>
 {
     protected readonly ILogger Log;
-    
-    public static INatsDeserialize<IMemoryOwner<byte>> BinaryDeserializer =>
-        NatsRawSerializer<IMemoryOwner<byte>>.Default;
 
-    public static IInboundAdapter<TRequest, TRequest> NullInboundAdapter => 
-        NullInboundAdapter<TRequest>.Default;
-    
     private readonly NatsToolbox _toolbox;
-    private readonly string _subject;
-    private readonly INatsDeserialize<TRequest> _requestDeserializer;
-    private readonly INatsSerialize<TResponse> _responseSerializer;
-    private readonly IInboundAdapter<TRequest>? _inboundAdapter;
-    private readonly IOutboundAdapter<TResponse>? _outboundAdapter;
-    private readonly int _concurrency;
-    private readonly DisposableBag _disposables;
     private readonly string _activityName;
+    private readonly string _requestType;
+    private readonly int _concurrency;
+    private readonly NatsSubscriber<IMessageDispatcher, TRequest, Result<TResponse>> _consumer;
+    private readonly OutboundPair<TResponse> _serializer;
 
     public record Config(
         string Subject,
-        IInboundAdapter<TRequest>? InboundAdapter = null,
-        IOutboundAdapter<TResponse>? OutboundAdapter = null,
+        InboundPair<TRequest>? InboundPair = null,
+        OutboundPair<TResponse>? OutboundPair = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {
@@ -44,80 +36,46 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
 
     public QueryNatsSourceHandler(NatsToolbox toolbox, Config config)
     {
-        Log = toolbox.GetLogger(this);
+        Log = toolbox.GetLoggerFor(this);
         _toolbox = toolbox;
-        _subject = config.Subject;
-        _requestDeserializer = toolbox.Deserializer<TRequest>();
-        _responseSerializer = toolbox.Serializer<TResponse>();
-        _inboundAdapter = config.InboundAdapter;
-        _outboundAdapter = config.OutboundAdapter;
+        _activityName = GetActivityName(config);
+        _requestType = typeof(TRequest).GetFriendlyName();
         _concurrency = config.Concurrency.NotLessThan(1);
-        _disposables = new DisposableBag();
+        var subject = config.Subject;
+        var deserializer = config.InboundPair ?? toolbox.Deserializer<TRequest>();
+        _serializer = config.OutboundPair ?? toolbox.Serializer<TResponse>();
+        _consumer = NatsSubscriber.Create(toolbox, subject, this, deserializer);
+    }
+
+    private static string GetActivityName(Config config)
+    {
         var requestType = typeof(TRequest).Name;
         var responseType = typeof(TResponse).Name;
-        _activityName = $"Subscribe<{requestType},{responseType}>({_subject})";
+        var subject = config.Subject;
+        return $"Subscribe<{requestType},{responseType}>({subject})";
     }
 
-    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher)
-    {
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        var agents = Enumerable
-            .Range(0, _concurrency)
-            .Select(_ => Agent.Launch(c => Consume(c, dispatcher), Log, cts.Token));
-        _disposables.AddMany(agents);
-        return Disposable.Create(cts.Cancel);
-    }
+    public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher) => 
+        _consumer.Subscribe(token, dispatcher, _concurrency);
 
-    private Task Consume(IAgentContext context, IMessageDispatcher mediator) =>
-        _inboundAdapter is null
-            ? Consume(context, mediator, _requestDeserializer, NullInboundAdapter)
-            : Consume(context, mediator, BinaryDeserializer, _inboundAdapter);
+    public Activity? OnTrace(IMessageDispatcher context, NatsHeaders? headers) =>
+        _toolbox.ReceiveActivity(_activityName, headers, true);
 
-    private async Task Consume<TPayload>(
-        IAgentContext context, 
-        IMessageDispatcher mediator,
-        INatsDeserialize<TPayload> deserializer,
-        IInboundAdapter<TPayload, TRequest> adapter)
-    {
-        var token = context.Token;
-        var consumer = _toolbox.SubscribeMany(token, _subject, deserializer);
-        await foreach (var message in consumer)
-            await ConsumeOne(token, message, adapter, mediator);
-    }
+    public Task<Result<TResponse>> OnHandle<TPayload>(
+        CancellationToken token, IMessageDispatcher dispatcher, 
+        NatsMsg<TPayload> payload, TRequest message) =>
+        dispatcher.ForkDispatchWithResult<TRequest, TResponse>(message, token);
 
-
-    protected async Task ConsumeOne<TPayload>(
-        CancellationToken token, 
-        NatsMsg<TPayload> message, 
-        IInboundAdapter<TPayload, TRequest> adapter, 
-        IMessageDispatcher mediator)
-    {
-        using var _ = _toolbox.ReceiveActivity(_activityName, message.Headers, true);
-        try
-        {
-            var request = Unpack(message, adapter);
-            var result = mediator.ForkDispatchWithResult<TRequest, TResponse>(request, token);
-            await TrySendResponse(message, await result, token);
-        }
-        catch (Exception error)
-        {
-            Log.LogError(error, "Failed to process message");
-        }
-    }
-
-    private TRequest Unpack<TPayload>(
-        NatsMsg<TPayload> message, IInboundAdapter<TPayload, TRequest> adapter) => 
-        _toolbox.Unpack(message, adapter);
-
-    private async Task TrySendResponse<TPayload>(
-        NatsMsg<TPayload> message, Result<TResponse> result, CancellationToken token)
+    public async Task OnSuccess<TPayload>(
+        CancellationToken token, IMessageDispatcher context, 
+        NatsMsg<TPayload> payload, TRequest request, Result<TResponse> response)
     {
         try
         {
-            var sent = result switch {
-                { Error: { } e } => SendResponse(token, _toolbox, message, e).AsTask(),
-                { Value: { } r } => SendResponse(token, _toolbox, message, r).AsTask(),
-                _ => Task.CompletedTask
+            var sent = response switch {
+                { Error: { } e } => _toolbox.Respond(token, payload, e),
+                { Value: { } r } => _toolbox.Respond(token, payload, r, _serializer), // no responder implemented yet
+                _ => default
             };
             await sent;
         }
@@ -127,24 +85,23 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         }
     }
 
-    private ValueTask SendResponse<TPayload>(
-        CancellationToken token,
-        NatsToolbox toolbox,
-        NatsMsg<TPayload> request,
-        TResponse response) =>
-        _outboundAdapter is null
-            ? toolbox.Respond(token, request, response, _responseSerializer)
-            : toolbox.Respond(token, request, response, _outboundAdapter);
+    public Task OnFailure<TPayload>(
+        CancellationToken token, IMessageDispatcher context, 
+        NatsMsg<TPayload> payload, Exception error)
+    {
+        Log.LogError(error, "Failed to process request {RequestType} in {ActivityName}", _requestType, _activityName);
+        return Task.CompletedTask;
+    }
     
-    private ValueTask SendResponse<TPayload>(
-        CancellationToken token,
-        NatsToolbox toolbox,
-        NatsMsg<TPayload> request,
-        Exception response) =>
-        toolbox.Respond(token, request, response);
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!disposing) return;
+        _consumer.Dispose();
+    }
 
     public void Dispose()
     {
-        _disposables.Dispose();
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 }

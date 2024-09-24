@@ -1,8 +1,8 @@
 ﻿using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Patterns;
 using MediatR;
-using Microsoft.Extensions.Logging;
-using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Targets;
 
@@ -10,17 +10,14 @@ public class EventNatsTargetHandler<TEvent>:
     NatsTargetHandler<TEvent>
     where TEvent: INotification
 {
-    protected readonly ILogger Log;
-
-    private readonly NatsToolbox _toolbox;
     private readonly string _subject;
-    private readonly INatsSerialize<TEvent> _serializer;
-    private readonly IOutboundAdapter<TEvent>? _adapter;
-    private string _activityName;
+    private readonly string _activityName;
+    private readonly NatsPublisher<TEvent> _publisher;
+    private readonly NatsToolbox _toolbox;
 
     public record Config(
         string Subject,
-        IOutboundAdapter<TEvent>? Adapter = null
+        OutboundPair<TEvent>? OutboundPair = null
     ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>
@@ -29,27 +26,23 @@ public class EventNatsTargetHandler<TEvent>:
 
     public EventNatsTargetHandler(NatsToolbox toolbox, Config config)
     {
-        Log = toolbox.GetLogger(this);
         _toolbox = toolbox;
         _subject = config.Subject;
-        _serializer = toolbox.Serializer<TEvent>();
-        _adapter = config.Adapter;
-        var eventType = typeof(TEvent).Name;
-        _activityName = $"Event<{eventType}>({_subject})";
+        _activityName = GetActivityName(config);
+        var serializer = config.OutboundPair ?? toolbox.Serializer<TEvent>();
+        _publisher = NatsPublisher.Create(toolbox, serializer);
+    }
+
+    private static string GetActivityName(Config config)
+    {
+        var eventType = typeof(TEvent).GetFriendlyName();
+        var subject = config.Subject;
+        return $"Event<{eventType}>({subject})";
     }
 
     public override async Task Handle(CancellationToken token, TEvent @event)
     {
         using var _ = _toolbox.SendActivity(_activityName, false);
-        var sent = _adapter is null
-            ? Handle(token, @event, _serializer, NullOutboundAdapter)
-            : Handle(token, @event, BinarySerializer, _adapter);
-        await sent;
+        await _publisher.Publish(token, _subject, @event);
     }
-
-    public Task Handle<TPayload>(
-        CancellationToken token, TEvent @event,
-        INatsSerialize<TPayload> serializer,
-        IOutboundAdapter<TEvent, TPayload> adapter) =>
-        _toolbox.Publish(token, _subject, @event, serializer, adapter).AsTask();
 }

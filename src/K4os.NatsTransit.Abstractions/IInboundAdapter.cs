@@ -5,10 +5,7 @@ namespace K4os.NatsTransit.Abstractions;
 
 public interface IInboundAdapter<in TPayload, out TMessage>
 {
-    public TMessage Adapt(
-        string subject, 
-        NatsHeaders? headers, 
-        TPayload payload);
+    public TMessage Adapt(string subject, NatsHeaders? headers, TPayload payload);
 }
 
 public interface IInboundAdapter<out TMessage>: IInboundAdapter<IMemoryOwner<byte>, TMessage>;

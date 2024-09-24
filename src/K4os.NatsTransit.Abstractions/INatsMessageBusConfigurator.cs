@@ -17,37 +17,37 @@ public interface INatsMessageBusConfigurator
     void QueryTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundPair<TRequest>? outboundAdapter = null,
+        InboundPair<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse>;
 
     void RequestTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundPair<TRequest>? outboundAdapter = null,
+        InboundPair<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse>;
 
     void CommandTarget<TCommand>(
         string subject,
-        IOutboundAdapter<TCommand>? outboundAdapter = null)
+        OutboundPair<TCommand>? outboundAdapter = null)
         where TCommand: IRequest;
 
     void EventTarget<TEvent>(
         string subject,
-        IOutboundAdapter<TEvent>? outboundAdapter = null)
+        OutboundPair<TEvent>? outboundAdapter = null)
         where TEvent: INotification;
     
     void EventListener<TEvent>(
         string subject, 
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundPair<TEvent>? inboundAdapter = null,
         int concurrency = 1)
         where TEvent: INotification;
 
     void QuerySource<TRequest, TResponse>(
         string subject,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundPair<TRequest>? inboundAdapter = null,
+        OutboundPair<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse>;
 
@@ -55,22 +55,22 @@ public interface INatsMessageBusConfigurator
         string stream,
         string consumer,
         bool applicationSuffix = true,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundPair<TRequest>? inboundAdapter = null,
+        OutboundPair<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse>;
 
     void CommandSource<TCommand>(
         string stream, string consumer,
         bool applicationSuffix = false,
-        IInboundAdapter<TCommand>? inboundAdapter = null,
+        InboundPair<TCommand>? inboundAdapter = null,
         int concurrency = 1)
         where TCommand: IRequest;
 
     void EventSource<TEvent>(
         string stream, string consumer,
         bool applicationSuffix = true,
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundPair<TEvent>? inboundAdapter = null,
         int concurrency = 1
     ) where TEvent: INotification;
 }

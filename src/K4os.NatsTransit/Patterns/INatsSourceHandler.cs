@@ -1,6 +1,6 @@
 ﻿using K4os.NatsTransit.Abstractions;
 
-namespace K4os.NatsTransit.Sources;
+namespace K4os.NatsTransit.Patterns;
 
 public interface INatsSourceHandler: IDisposable
 {

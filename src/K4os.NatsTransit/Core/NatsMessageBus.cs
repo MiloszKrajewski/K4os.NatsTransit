@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using Microsoft.Extensions.Hosting;
@@ -26,8 +27,8 @@ public class NatsMessageBus: IHostedService, IMessageBus
     public NatsMessageBus(
         ILoggerFactory loggerFactory,
         INatsConnection connection,
-        INatsJSContext context,
-        INatsSerializerXFactory serializerFactory,
+        INatsJSContext jetStream,
+        INatsSerializers serializerFactory,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer,
         IEnumerable<INatsContextAction> actions,
@@ -37,8 +38,8 @@ public class NatsMessageBus: IHostedService, IMessageBus
         Log = loggerFactory.CreateLogger(GetType());
         var toolbox = _toolbox = new NatsToolbox(
             loggerFactory,
-            connection, context,
-            serializerFactory, exceptionSerializer, 
+            connection, jetStream,
+            serializerFactory,  
             messageTracer);
         _dispatcher = dispatcher;
         _actions = actions.ToArray();

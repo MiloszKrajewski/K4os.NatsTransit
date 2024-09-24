@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using MediatR;
@@ -22,7 +23,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         ILoggerFactory loggerFactory,
         INatsConnection connection,
         INatsJSContext context,
-        INatsSerializerXFactory serializerFactory,
+        INatsSerializers serializerFactory,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer) =>
         new(
@@ -79,8 +80,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void QueryTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundPair<TRequest>? outboundAdapter = null,
+        InboundPair<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse> =>
         _targets.Add(
             new QueryNatsTargetHandler<TRequest, TResponse>.Config(
@@ -89,8 +90,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void RequestTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundPair<TRequest>? outboundAdapter = null,
+        InboundPair<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse> =>
         _targets.Add(
             new RequestNatsTargetHandler<TRequest, TResponse>.Config(
@@ -98,20 +99,20 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     public void CommandTarget<TCommand>(
         string subject,
-        IOutboundAdapter<TCommand>? outboundAdapter = null)
+        OutboundPair<TCommand>? outboundAdapter = null)
         where TCommand: IRequest =>
         _targets.Add(new CommandNatsTargetHandler<TCommand>.Config(subject, outboundAdapter));
 
     public void EventTarget<TEvent>(
         string subject,
-        IOutboundAdapter<TEvent>? outboundAdapter = null)
+        OutboundPair<TEvent>? outboundAdapter = null)
         where TEvent: INotification =>
         _targets.Add(new EventNatsTargetHandler<TEvent>.Config(subject, outboundAdapter));
 
     public void QuerySource<TRequest, TResponse>(
         string subject,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundPair<TRequest>? inboundAdapter = null,
+        OutboundPair<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
@@ -122,8 +123,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         string stream,
         string consumer,
         bool applicationSuffix = false,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundPair<TRequest>? inboundAdapter = null,
+        OutboundPair<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
@@ -134,7 +135,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void CommandSource<TCommand>(
         string stream, string consumer,
         bool applicationSuffix = false,
-        IInboundAdapter<TCommand>? inboundAdapter = null,
+        InboundPair<TCommand>? inboundAdapter = null,
         int concurrency = 1)
         where TCommand: IRequest =>
         _sources.Add(
@@ -145,7 +146,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void EventSource<TEvent>(
         string stream, string consumer,
         bool applicationSuffix = true,
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundPair<TEvent>? inboundAdapter = null,
         int concurrency = 1
     ) where TEvent: INotification =>
         _sources.Add(
@@ -155,7 +156,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     public void EventListener<TEvent>(
         string subject,
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundPair<TEvent>? inboundAdapter = null,
         int concurrency = 1) where TEvent: INotification =>
         _sources.Add(
             new EventNatsListenerHandler<TEvent>.Config(
