@@ -73,8 +73,9 @@ public class NatsMessageBus: IHostedService, IMessageBus
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
         using var capture = new Capture<object>(predicate);
         using var subscription = _toolbox.Events.Subscribe(capture);
-        using var delay = Task.Delay(timeout ?? NatsConstants.ResponseTimeout, cts.Token);
+        var delay = Task.Delay(timeout ?? NatsConstants.ResponseTimeout, cts.Token);
         var done = await Task.WhenAny(delay, capture.Task);
+        cts.Cancel();
         if (done == delay) throw new TimeoutException("Waiting for event timed out");
         return await capture.Task;
     }

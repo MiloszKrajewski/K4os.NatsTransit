@@ -1,5 +1,3 @@
-﻿using System.Buffers;
+﻿namespace K4os.NatsTransit.Abstractions.Serialization;
 
-namespace K4os.NatsTransit.Abstractions.Serialization;
-
-public interface ICustomSerializer<in TMessage>: IOutboundTransformer<TMessage, IBufferWriter<byte>>;
+public interface ICustomSerializer<in TMessage>: IOutboundTransformer<TMessage, Memory<byte>>;

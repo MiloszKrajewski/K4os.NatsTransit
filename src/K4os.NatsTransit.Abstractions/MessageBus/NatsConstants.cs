@@ -1,4 +1,4 @@
-﻿namespace K4os.NatsTransit.Core;
+﻿namespace K4os.NatsTransit.Abstractions.MessageBus;
 
 public class NatsConstants
 {

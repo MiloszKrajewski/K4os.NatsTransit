@@ -1,7 +1,9 @@
 using System.Buffers;
-using K4os.NatsTransit.Abstractions;
+using System.Text;
+using K4os.KnownTypes;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
-using NATS.Client.Core;
+using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
 namespace K4os.NatsTransit.NewtonsoftJson;
@@ -9,14 +11,22 @@ namespace K4os.NatsTransit.NewtonsoftJson;
 public class NewtonsoftJsonCustomDeserializer<T>: ICustomDeserializer<T>
 {
     private readonly JsonSerializerSettings _settings;
+    private readonly KnownTypesRegistry? _registry;
 
-    public NewtonsoftJsonCustomDeserializer(JsonSerializerSettings settings)
+    public NewtonsoftJsonCustomDeserializer(JsonSerializerSettings settings, KnownTypesRegistry? registry = null)
     {
         _settings = settings;
+        _registry = registry;
     }
 
-    public T Transform(string subject, NatsHeaders? headers, IMemoryOwner<byte> payload)
+    public T Transform(string subject, IDictionary<string, StringValues>? headers, IMemoryOwner<byte> payload)
     {
-        throw new NotImplementedException();
+        var type = headers?.TryGetValue(NatsConstants.KnownTypeHeaderName, out var alias) ?? false
+            ? _registry?.TryGetType(alias!)
+            : null;
+        var span = payload.Memory.Span;
+        var text = Encoding.UTF8.GetString(span);
+        var data = JsonConvert.DeserializeObject(text, type ?? typeof(T), _settings);
+        return (T?)data!;
     }
 }

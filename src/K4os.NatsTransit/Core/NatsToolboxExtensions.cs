@@ -1,8 +1,10 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
+using Microsoft.Extensions.Primitives;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 
@@ -13,6 +15,9 @@ public static class NatsToolboxExtensions
 {
     private static readonly NatsRawSerializer<IMemoryOwner<byte>> BinaryDeserializer =
         NatsRawSerializer<IMemoryOwner<byte>>.Default;
+    
+    internal static NatsHeaders? ToNatsHeaders(this Dictionary<string, StringValues>? headers) => 
+        headers is null ? null : new NatsHeaders(headers);
 
     internal static string? TryGetHeaderString(this NatsHeaders? headers, string key) =>
         headers?.TryGetValue(key, out var value) ?? false ? value.ToString() : null;
@@ -30,11 +35,11 @@ public static class NatsToolboxExtensions
         headers.TryGetHeaderString(NatsConstants.KnownTypeHeaderName);
 
     public static
-        ((INatsSerialize<T>, NullOutboundTransformer<T>)?, (NatsRawSerializer<IBufferWriter<byte>>, ICustomSerializer<T>)?)
+        ((INatsSerialize<T>, NullOutboundTransformer<T>)?, (NatsRawSerializer<Memory<byte>>, ICustomSerializer<T>)?)
         Unpack<T>(this OutboundAdapter<T> serializer) =>
         serializer.Native is { } native
             ? ((native, NullOutboundTransformer<T>.Default), null)
-            : (null, (NatsRawSerializer<IBufferWriter<byte>>.Default, serializer.Custom.ThrowIfNull()));
+            : (null, (NatsRawSerializer<Memory<byte>>.Default, serializer.Custom.ThrowIfNull()));
 
     public static
         ((INatsDeserialize<T>, NullInboundTransformer<T>)?, (NatsRawSerializer<IMemoryOwner<byte>>, ICustomDeserializer<T>)?)

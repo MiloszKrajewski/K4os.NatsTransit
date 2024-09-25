@@ -7,6 +7,7 @@ using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
@@ -82,10 +83,10 @@ public class NatsToolbox
     private string? GetKnownType<TResponse>(TResponse response) => null;
 
     // ReSharper disable once UnusedMethodReturnValue.Local
-    private static bool TryAddHeader(ref NatsHeaders? headers, string key, string? value) =>
-        value is not null && (headers ??= new NatsHeaders()).TryAdd(key, value);
+    private static bool TryAddHeader(ref Dictionary<string, StringValues>? headers, string key, string? value) =>
+        value is not null && (headers ??= new Dictionary<string, StringValues>()).TryAdd(key, value);
 
-    private void TryAddTrace(ref NatsHeaders? headers) =>
+    private void TryAddTrace(ref Dictionary<string, StringValues>? headers) =>
         _messageTracer.Inject(Activity.Current?.Context, ref headers);
 
     private ActivityContext? TryRestoreTrace(NatsHeaders? headers) =>
@@ -113,11 +114,11 @@ public class NatsToolbox
         INatsSerialize<TPayload> serializer,
         IOutboundTransformer<TMessage, TPayload> transformer)
     {
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(message));
         TryAddTrace(ref headers);
-        var payload = transformer.Adapt(subject, ref headers, message);
-        return _connection.Publish(token, subject, serializer, headers, payload);
+        var payload = transformer.Transform(subject, ref headers, message);
+        return _connection.Publish(token, subject, serializer, headers.ToNatsHeaders(), payload);
     }
 
     public ValueTask Respond(
@@ -125,10 +126,10 @@ public class NatsToolbox
         string subject, Exception exception)
     {
         var payload = _exceptionSerializer.Serialize(exception);
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
         TryAddTrace(ref headers);
-        return _connection.Publish(token, subject, null, headers, EmptyPayload);
+        return _connection.Publish(token, subject, null, headers.ToNatsHeaders(), EmptyPayload);
     }
     
     public ValueTask<PubAckResponse> Request<TRequest, TPayload>(
@@ -137,12 +138,12 @@ public class NatsToolbox
         INatsSerialize<TPayload> serializer,
         IOutboundTransformer<TRequest, TPayload> transformer)
     {
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.ReplyToHeaderName, replySubject);
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
         TryAddTrace(ref headers);
-        var payload = transformer.Adapt(subject, ref headers, request);
-        return _jetStream.Publish(token, subject, serializer, headers, payload);
+        var payload = transformer.Transform(subject, ref headers, request);
+        return _jetStream.Publish(token, subject, serializer, headers.ToNatsHeaders(), payload);
     }
 
     public ValueTask<NatsMsg<TResponsePayload>> Query<TRequest, TRequestPayload, TResponsePayload>(
@@ -153,11 +154,11 @@ public class NatsToolbox
         INatsDeserialize<TResponsePayload> deserializer,
         TimeSpan timeout)
     {
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(request));
         TryAddTrace(ref headers);
-        var payload = outboundTransformer.Adapt(subject, ref headers, request);
-        return _connection.Request(token, subject, serializer, deserializer, timeout, headers, payload);
+        var payload = outboundTransformer.Transform(subject, ref headers, request);
+        return _connection.Request(token, subject, serializer, deserializer, timeout, headers.ToNatsHeaders(), payload);
     }
 
     public ValueTask Respond<TRequest, TResponse, TPayload>(
@@ -166,11 +167,11 @@ public class NatsToolbox
         INatsSerialize<TPayload> serializer,
         IOutboundTransformer<TResponse, TPayload> transformer)
     {
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.KnownTypeHeaderName, GetKnownType(response));
         TryAddTrace(ref headers);
-        var payload = transformer.Adapt(request.Subject, ref headers, response);
-        return request.Respond(token, serializer, headers, payload);
+        var payload = transformer.Transform(request.Subject, ref headers, response);
+        return request.Respond(token, serializer, headers.ToNatsHeaders(), payload);
     }
 
     public ValueTask Respond<TRequest>(
@@ -178,10 +179,10 @@ public class NatsToolbox
         NatsMsg<TRequest> request, Exception exception)
     {
         var payload = _exceptionSerializer.Serialize(exception);
-        NatsHeaders? headers = default;
+        Dictionary<string, StringValues>? headers = default;
         TryAddHeader(ref headers, NatsConstants.ErrorHeaderName, payload);
         TryAddTrace(ref headers);
-        return request.Respond(token, null, headers, EmptyPayload);
+        return request.Respond(token, null, headers.ToNatsHeaders(), EmptyPayload);
     }
     
     public IAsyncEnumerable<NatsMsg<T>> SubscribeOne<T>(

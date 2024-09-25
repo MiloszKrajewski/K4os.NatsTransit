@@ -1,16 +1,16 @@
-using NATS.Client.Core;
+using Microsoft.Extensions.Primitives;
 
 namespace K4os.NatsTransit.Abstractions.Serialization;
 
 public interface IOutboundTransformer<in TMessage, out TPayload>
 {
-    public TPayload Adapt(string subject, ref NatsHeaders? headers, TMessage payload);
+    public TPayload Transform(string subject, ref Dictionary<string, StringValues>? headers, TMessage payload);
 }
 
 public class NullOutboundTransformer<TMessage>: IOutboundTransformer<TMessage, TMessage>
 {
     public static NullOutboundTransformer<TMessage> Default { get; } = new();
     
-    public TMessage Adapt(string subject, ref NatsHeaders? headers, TMessage payload) => 
+    public TMessage Transform(string subject, ref Dictionary<string, StringValues>? headers, TMessage payload) => 
         payload;
 }

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;

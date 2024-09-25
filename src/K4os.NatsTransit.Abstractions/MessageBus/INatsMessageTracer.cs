@@ -1,12 +1,13 @@
 ﻿using System.Diagnostics;
+using Microsoft.Extensions.Primitives;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Abstractions.MessageBus;
 
 public interface INatsMessageTracer
 {
-    public void Inject(ActivityContext? context, ref NatsHeaders? headers);
-    public ActivityContext? Extract(NatsHeaders? headers);
+    public void Inject(ActivityContext? context, ref Dictionary<string, StringValues>? headers);
+    public ActivityContext? Extract(IDictionary<string, StringValues>? headers);
 }
 
 public class NullMessageTracer: INatsMessageTracer
@@ -15,7 +16,7 @@ public class NullMessageTracer: INatsMessageTracer
 
     private NullMessageTracer() { }
 
-    public void Inject(ActivityContext? context, ref NatsHeaders? headers) { }
+    public void Inject(ActivityContext? context, ref Dictionary<string, StringValues>? headers) { }
     
-    public ActivityContext? Extract(NatsHeaders? headers) => null;
+    public ActivityContext? Extract(IDictionary<string, StringValues>? headers) => null;
 }
