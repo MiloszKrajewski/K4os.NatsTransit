@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Primitives;
-using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Abstractions.Serialization;
 

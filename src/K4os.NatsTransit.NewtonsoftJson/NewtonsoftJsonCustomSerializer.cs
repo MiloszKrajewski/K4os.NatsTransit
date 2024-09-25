@@ -21,9 +21,9 @@ public class NewtonsoftJsonCustomSerializer<T>: ICustomSerializer<T>
     public Memory<byte> Transform(string subject, ref Dictionary<string, StringValues>? headers, T payload)
     {
         var text = JsonConvert.SerializeObject(payload, typeof(object), _settings);
-        var bytes = Encoding.UTF8.GetBytes(text);
         var alias = payload is not null ? _registry?.TryGetAlias(payload.GetType()) : null;
         if (alias is not null) (headers ??= new())[NatsConstants.KnownTypeHeaderName] = alias;
+        var bytes = Encoding.UTF8.GetBytes(text);
         return bytes;
     }
 }
