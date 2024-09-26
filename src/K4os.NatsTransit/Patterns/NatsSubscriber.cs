@@ -1,9 +1,7 @@
 ﻿using System.Diagnostics;
 using K4os.Async.Toys;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
-using K4os.NatsTransit.Extensions;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 

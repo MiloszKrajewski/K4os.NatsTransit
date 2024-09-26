@@ -1,5 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Abstractions.Serialization;
+﻿using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -18,7 +17,7 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public record Config(
         string Subject,
-        OutboundAdapter<TCommand>? OutboundPair = null
+        OutboundAdapter<TCommand>? OutboundAdapter = null
     ): INatsTargetConfig
     {
         public INatsTargetHandler CreateHandler(NatsToolbox toolbox) =>
@@ -30,7 +29,7 @@ public class CommandNatsTargetHandler<TCommand>:
         _toolbox = toolbox;
         _subject = config.Subject;
         _activityName = GetActivityName(config);
-        var serializer = config.OutboundPair ?? toolbox.Serializer<TCommand>();
+        var serializer = config.OutboundAdapter ?? toolbox.GetOutboundAdapter<TCommand>();
         _publisher = NatsPublisher.Create(toolbox, serializer);
     }
 
@@ -43,7 +42,8 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public override async Task Handle(CancellationToken token, TCommand command)
     {
-        using var _ = _toolbox.SendActivity(_activityName, false);
-        await _publisher.Publish(token, _subject, command).AsTask();
+        using var _ = _toolbox.Tracing.SendingScope(_activityName, false);
+        await _publisher.Publish(token, _subject, command);
+        _toolbox.Metrics.MessageSent(_subject);
     }
 }

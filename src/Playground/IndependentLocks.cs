@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.DistributedLocks;
 using Microsoft.Extensions.Logging;
 using Serilog;

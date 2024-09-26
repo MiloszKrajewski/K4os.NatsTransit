@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
@@ -35,8 +34,8 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
         _toolbox = toolbox;
         _subject = config.Subject;
         var timeout = config.Timeout ?? NatsConstants.ResponseTimeout;
-        var serializer = config.RequestAdapter ?? toolbox.Serializer<TRequest>();
-        var deserializer = config.ResponseAdapter ?? toolbox.Deserializer<TResponse>();
+        var serializer = config.RequestAdapter ?? toolbox.GetOutboundAdapter<TRequest>();
+        var deserializer = config.ResponseAdapter ?? toolbox.GetInboundAdapter<TResponse>();
         _activityName = GetActivityName(config);
         _requester = NatsInquirer.Create(toolbox, timeout, serializer, deserializer);
     }
@@ -51,7 +50,9 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
 
     public override async Task<TResponse> Handle(CancellationToken token, TRequest request)
     {
-        using var _ = _toolbox.SendActivity(_activityName, true);
-        return await _requester.Query(token, _subject, request);
+        using var _ = _toolbox.Tracing.SendingScope(_activityName, true);
+        var response = await _toolbox.Metrics.RequestScope(
+            _subject, () => _requester.Query(token, _subject, request));
+        return response;
     }
 }

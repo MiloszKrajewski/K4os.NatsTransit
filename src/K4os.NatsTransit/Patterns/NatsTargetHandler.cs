@@ -1,4 +1,4 @@
-﻿namespace K4os.NatsTransit.Targets;
+﻿namespace K4os.NatsTransit.Patterns;
 
 public interface INatsTargetHandler
 {

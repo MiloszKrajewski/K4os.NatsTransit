@@ -1,5 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Abstractions.Serialization;
+﻿using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -30,7 +29,7 @@ public class EventNatsTargetHandler<TEvent>:
         _toolbox = toolbox;
         _subject = config.Subject;
         _activityName = GetActivityName(config);
-        var serializer = config.OutboundPair ?? toolbox.Serializer<TEvent>();
+        var serializer = config.OutboundPair ?? toolbox.GetOutboundAdapter<TEvent>();
         _publisher = NatsPublisher.Create(toolbox, serializer);
     }
 
@@ -43,7 +42,8 @@ public class EventNatsTargetHandler<TEvent>:
 
     public override async Task Handle(CancellationToken token, TEvent @event)
     {
-        using var _ = _toolbox.SendActivity(_activityName, false);
+        using var _ = _toolbox.Tracing.SendingScope(_activityName, false);
         await _publisher.Publish(token, _subject, @event);
+        _toolbox.Metrics.MessageSent(_subject);
     }
 }

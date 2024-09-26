@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Targets;
 
 namespace K4os.NatsTransit.Core;

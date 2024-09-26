@@ -1,5 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Abstractions.MessageBus;
+﻿using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
@@ -33,8 +32,8 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
         _toolbox = toolbox;
         _subject = config.Subject;
         var timeout = config.Timeout ?? NatsConstants.ResponseTimeout;
-        var outboundPair = config.OutboundPair ?? toolbox.Serializer<TRequest>();
-        var inboundPair = config.InboundPair ?? toolbox.Deserializer<TResponse>();
+        var outboundPair = config.OutboundPair ?? toolbox.GetOutboundAdapter<TRequest>();
+        var inboundPair = config.InboundPair ?? toolbox.GetInboundAdapter<TResponse>();
         _activityName = GetActivityName(config);
         _requester = NatsRequester.Create(toolbox, timeout, outboundPair, inboundPair);
     }
@@ -49,7 +48,9 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
 
     public override async Task<TResponse> Handle(CancellationToken token, TRequest request)
     {
-        using var _ = _toolbox.SendActivity(_activityName, true);
-        return await _requester.Request(token, _subject, request);
+        using var _ = _toolbox.Tracing.SendingScope(_activityName, true);
+        var response = await _toolbox.Metrics.RequestScope(
+            _subject, () => _requester.Request(token, _subject, request));
+        return response;
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using K4os.KnownTypes;
 using K4os.NatsTransit.Abstractions.MessageBus;

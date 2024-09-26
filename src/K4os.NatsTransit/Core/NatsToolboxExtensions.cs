@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
@@ -13,15 +12,12 @@ namespace K4os.NatsTransit.Core;
 [SuppressMessage("Design", "CA1068:CancellationToken parameters must come last")]
 public static class NatsToolboxExtensions
 {
-    private static readonly NatsRawSerializer<IMemoryOwner<byte>> BinaryDeserializer =
-        NatsRawSerializer<IMemoryOwner<byte>>.Default;
-    
-    internal static NatsHeaders? ToNatsHeaders(this Dictionary<string, StringValues>? headers) => 
+    internal static NatsHeaders? ToNatsHeaders(this Dictionary<string, StringValues>? headers) =>
         headers is null ? null : new NatsHeaders(headers);
 
     internal static string? TryGetHeaderString(this NatsHeaders? headers, string key) =>
         headers?.TryGetValue(key, out var value) ?? false ? value.ToString() : null;
-    
+
     internal static string? TryGetReplyTo<T>(this NatsJSMsg<T> message) =>
         message.ReplyTo ?? message.Headers.TryGetHeaderString(NatsConstants.ReplyToHeaderName);
 
@@ -34,15 +30,17 @@ public static class NatsToolboxExtensions
     internal static string? TryGetKnownType(this NatsHeaders? headers) =>
         headers.TryGetHeaderString(NatsConstants.KnownTypeHeaderName);
 
-    public static
-        ((INatsSerialize<T>, NullOutboundTransformer<T>)?, (NatsRawSerializer<Memory<byte>>, ICustomSerializer<T>)?)
+    internal static (
+        (INatsSerialize<T>, NullOutboundTransformer<T>)?,
+        (NatsRawSerializer<Memory<byte>>, ICustomSerializer<T>)?)
         Unpack<T>(this OutboundAdapter<T> serializer) =>
         serializer.Native is { } native
             ? ((native, NullOutboundTransformer<T>.Default), null)
             : (null, (NatsRawSerializer<Memory<byte>>.Default, serializer.Custom.ThrowIfNull()));
 
-    public static
-        ((INatsDeserialize<T>, NullInboundTransformer<T>)?, (NatsRawSerializer<IMemoryOwner<byte>>, ICustomDeserializer<T>)?)
+    internal static
+        ((INatsDeserialize<T>, NullInboundTransformer<T>)?,
+        (NatsRawSerializer<IMemoryOwner<byte>>, ICustomDeserializer<T>)?)
         Unpack<T>(this InboundAdapter<T> deserializer) =>
         deserializer.Native is { } native
             ? ((native, NullInboundTransformer<T>.Default), null)
@@ -70,19 +68,6 @@ public static class NatsToolboxExtensions
             _ => default // this will not happen as 'Unpack' guarantees one of the branches
         };
 
-    // public static ValueTask Respond<TRequest, TResponse>(
-    //     this NatsToolbox toolbox,
-    //     CancellationToken token,
-    //     NatsJSMsg<TRequest> request, TResponse payload,
-    //     OutboundPair<TResponse> serializer) =>
-    //     toolbox.Publish(token, GetReplyTo(request), payload, serializer);
-    //
-    // public static ValueTask Respond<TRequest>(
-    //     this NatsToolbox toolbox,
-    //     CancellationToken token,
-    //     NatsJSMsg<TRequest> request, Exception error) =>
-    //     toolbox.Respond(token, GetReplyTo(request), error);
-
     public static ValueTask<NatsMsg<TResponsePayload>> Query<TRequest, TResponsePayload>(
         this NatsToolbox toolbox,
         CancellationToken token,
@@ -93,18 +78,6 @@ public static class NatsToolboxExtensions
         serializer.Unpack() switch {
             (var (s, a), null) => toolbox.Query(token, subject, request, s, a, deserializer, timeout),
             (null, var (s, a)) => toolbox.Query(token, subject, request, s, a, deserializer, timeout),
-            _ => default // this will not happen as 'Unpack' guarantees one of the branches
-        };
-
-    public static ValueTask<NatsMsg<IMemoryOwner<byte>>> Query<TRequest>(
-        this NatsToolbox toolbox,
-        CancellationToken token,
-        string subject, TRequest request,
-        OutboundAdapter<TRequest> serializer,
-        TimeSpan timeout) =>
-        serializer.Unpack() switch {
-            (var (s, a), null) => toolbox.Query(token, subject, request, s, a, BinaryDeserializer, timeout),
-            (null, var (s, a)) => toolbox.Query(token, subject, request, s, a, BinaryDeserializer, timeout),
             _ => default // this will not happen as 'Unpack' guarantees one of the branches
         };
 
@@ -136,7 +109,7 @@ public static class NatsToolboxExtensions
     [Obsolete("Use NoAck version")]
     public static ValueTask WaitAndKeepAlive<TRequest>(
         this NatsJSMsg<TRequest> message, CancellationToken token, Task action) =>
-        action.IsCompletedSuccessfully 
+        action.IsCompletedSuccessfully
             ? message.AckAsync(null, token) // fast path, completed immediately, no error 
             : new ValueTask(WaitAndKeepAliveLoop(message, action, token));
 
@@ -151,7 +124,7 @@ public static class NatsToolboxExtensions
 
         await message.AckAsync(null, token);
     }
-    
+
     public static Task WaitAndKeepAliveNoAck<TRequest>(
         this NatsJSMsg<TRequest> message, Task action, CancellationToken token) =>
         action.KeepAlive(

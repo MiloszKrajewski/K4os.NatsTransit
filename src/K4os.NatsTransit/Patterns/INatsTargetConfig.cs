@@ -1,6 +1,6 @@
 ﻿using K4os.NatsTransit.Core;
 
-namespace K4os.NatsTransit.Targets;
+namespace K4os.NatsTransit.Patterns;
 
 public interface INatsTargetConfig
 {

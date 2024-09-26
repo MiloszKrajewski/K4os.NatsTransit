@@ -3,7 +3,6 @@ using System.Text.Json;
 using FlowDemo.Hosting.Services;
 using K4os.KnownTypes;
 using K4os.KnownTypes.SystemTextJson;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
@@ -89,8 +88,8 @@ public static class ApplicationSetupExtensions
                     .AddRuntimeInstrumentation()
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddMeter(
-                        ScopedMessageDispatcher.Meter.Name))
+                    .AddMeter(ScopedMessageDispatcher.Meter.Name)
+                    .AddMeter(NatsToolboxMetrics.Meter.Name))
             .WithTracing(
                 x => x
                     .SetSampler<AlwaysOnSampler>()
@@ -103,7 +102,7 @@ public static class ApplicationSetupExtensions
                         })
                     .AddSource(
                         ScopedMessageDispatcher.ActivitySource.Name,
-                        NatsToolbox.ActivitySource.Name
+                        NatsToolboxTracing.ActivitySource.Name
                     ));
         services.ConfigureOpenTelemetryMeterProvider(
             m => m.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));

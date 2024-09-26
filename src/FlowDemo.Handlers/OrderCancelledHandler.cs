@@ -1,6 +1,5 @@
 ﻿using FlowDemo.Entities;
 using FlowDemo.Messages;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

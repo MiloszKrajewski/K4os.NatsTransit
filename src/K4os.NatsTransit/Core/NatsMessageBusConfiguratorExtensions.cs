@@ -1,8 +1,5 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Abstractions.MessageBus;
+﻿using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
-using K4os.NatsTransit.Extensions;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;

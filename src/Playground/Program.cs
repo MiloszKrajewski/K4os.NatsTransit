@@ -1,5 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Abstractions.DistributedLocks;
+﻿using K4os.NatsTransit.Abstractions.DistributedLocks;
 using K4os.NatsTransit.Internal;
 using K4os.NatsTransit.Locks;
 using Microsoft.Extensions.DependencyInjection;

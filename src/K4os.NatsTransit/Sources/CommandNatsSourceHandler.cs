@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
@@ -27,7 +26,7 @@ public class CommandNatsSourceHandler<TCommand>:
 
     public record Config(
         string Stream, string Consumer,
-        InboundAdapter<TCommand>? InboundPair = null,
+        InboundAdapter<TCommand>? InboundAdapter = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {
@@ -44,7 +43,7 @@ public class CommandNatsSourceHandler<TCommand>:
         _concurrency = config.Concurrency.NotLessThan(1);
         var streamName = config.Stream;
         var consumerName = config.Consumer;
-        var deserializer = config.InboundPair ?? toolbox.Deserializer<TCommand>();
+        var deserializer = config.InboundAdapter ?? toolbox.GetInboundAdapter<TCommand>();
         _consumer = NatsConsumer.Create(toolbox, streamName, consumerName, this, deserializer);
     }
 
@@ -60,12 +59,14 @@ public class CommandNatsSourceHandler<TCommand>:
         _consumer.Subscribe(token, dispatcher, _concurrency);
 
     public Activity? OnTrace(IMessageDispatcher context, NatsHeaders? headers) => 
-        _toolbox.ReceiveActivity(_activityName, headers, false);
+        _toolbox.Tracing.ReceivedScope(_activityName, headers, false);
 
     public Task<object?> OnHandle<TPayload>(
         CancellationToken token, IMessageDispatcher dispatcher, 
-        NatsJSMsg<TPayload> payload, TCommand message) => 
-        dispatcher.ForkDispatch<TCommand, object?>(message, token);
+        NatsJSMsg<TPayload> payload, TCommand message) =>
+        _toolbox.Metrics.HandleScope(
+            payload.Subject, 
+            () => dispatcher.ForkDispatch<TCommand, object?>(message, token));
 
     public Task OnSuccess<TPayload>(
         CancellationToken token, IMessageDispatcher dispatcher, 

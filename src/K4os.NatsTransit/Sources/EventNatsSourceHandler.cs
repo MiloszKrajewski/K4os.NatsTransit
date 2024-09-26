@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using K4os.NatsTransit.Abstractions;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
@@ -27,7 +26,7 @@ public class EventNatsSourceHandler<TEvent>:
 
     public record Config(
         string Stream, string Consumer,
-        InboundAdapter<TEvent>? InboundPair = null,
+        InboundAdapter<TEvent>? InboundAdapter = null,
         int Concurrency = 1
     ): INatsSourceConfig
     {
@@ -44,7 +43,7 @@ public class EventNatsSourceHandler<TEvent>:
         _concurrency = config.Concurrency.NotLessThan(1);
         var streamName = config.Stream;
         var consumerName = config.Consumer;
-        var deserializer = config.InboundPair ?? toolbox.Deserializer<TEvent>();
+        var deserializer = config.InboundAdapter ?? toolbox.GetInboundAdapter<TEvent>();
         _consumer = NatsConsumer.Create(toolbox, streamName, consumerName, this, deserializer);
     }
 
@@ -60,11 +59,14 @@ public class EventNatsSourceHandler<TEvent>:
         _consumer.Subscribe(token, dispatcher, _concurrency);
 
     public Activity? OnTrace(IMessageDispatcher context, NatsHeaders? headers) => 
-        _toolbox.ReceiveActivity(_activityName, headers, false);
+        _toolbox.Tracing.ReceivedScope(_activityName, headers, false);
 
     public Task<object?> OnHandle<TPayload>(
         CancellationToken token, IMessageDispatcher dispatcher,
-        NatsJSMsg<TPayload> payload, TEvent message)
+        NatsJSMsg<TPayload> payload, TEvent message) =>
+        _toolbox.Metrics.HandleScope(payload.Subject, () => HandleEvent(token, dispatcher, message));
+
+    private Task<object?> HandleEvent(CancellationToken token, IMessageDispatcher dispatcher, TEvent message)
     {
         _toolbox.OnEvent(message);
         return dispatcher.ForkDispatch<TEvent, object?>(message, token);
