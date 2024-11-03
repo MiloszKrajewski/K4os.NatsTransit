@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
+using System.Threading.Tasks;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Patterns;
