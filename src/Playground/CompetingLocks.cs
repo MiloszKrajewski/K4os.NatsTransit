@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.DistributedLocks;
 using Microsoft.Extensions.Logging;
 
 namespace Playground;
@@ -12,7 +12,7 @@ internal class CompetingLocks
     private readonly CancellationTokenSource _cts = new();
     private readonly IDistributedLocks _locks;
     
-    private long _concurrent = 0;
+    private long _concurrent;
 
     public CompetingLocks(ILoggerFactory loggerFactory, IDistributedLocks locks)
     {

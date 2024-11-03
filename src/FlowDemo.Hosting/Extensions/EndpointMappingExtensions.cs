@@ -1,4 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
+﻿using K4os.NatsTransit.Abstractions.MessageBus;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

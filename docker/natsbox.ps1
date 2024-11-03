@@ -1,0 +1,1 @@
+docker run --rm -ti -e NATS_URL=http://host.docker.internal:4222 natsio/nats-box:latest

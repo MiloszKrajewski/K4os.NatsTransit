@@ -1,6 +1,5 @@
-﻿using K4os.NatsTransit.Abstractions;
-using K4os.NatsTransit.Extensions;
-using MediatR;
+﻿using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -24,7 +23,7 @@ public static class NatsMessageBusConfiguratorExtensions
                     p.GetRequiredService<INatsConnection>(),
                     p.GetRequiredService<INatsJSContext>(),
                     p.GetRequiredService<INatsSerializerFactory>(),
-                    p.GetRequiredService<IExceptionSerializer>(),
+                    p.GetService<IExceptionSerializer>(),
                     p.GetRequiredService<IMessageDispatcher>(),
                     p.GetService<INatsMessageTracer>());
             });

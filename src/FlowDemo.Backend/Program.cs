@@ -3,7 +3,7 @@ using FlowDemo.Entities;
 using FlowDemo.Handlers;
 using FlowDemo.Hosting.Extensions;
 using FlowDemo.Messages;
-using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
 using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -29,6 +29,7 @@ builder.ConfigureMessageBus(
             .EmitsEvents<OrderRejectedEvent>("order-rejected")
             .EmitsEvents<OrderCancelledEvent>("order-cancelled")
             .RespondsToQueries<GetOrderQuery, OrderResponse>("get-order-by-id")
+            // .HandlesRequests<GetOrderQuery, OrderResponse>("get-order-by-id")
             .ConsumesAllCommands()
             .ConsumesAllEvents();
 

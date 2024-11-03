@@ -6,6 +6,7 @@ services:
 
   nats:
     image: nats:latest
+    container_name: nats
     command: -js -m 8222
     ports:
       - "4222:4222" # client port
@@ -15,6 +16,7 @@ services:
 
   pgsql:
     image: postgres:latest
+    container_name: pgsql
     environment:
       POSTGRES_USER: "test"
       POSTGRES_PASSWORD: "Test!123"
@@ -23,14 +25,14 @@ services:
         
   mailhog:
     image: mailhog/mailhog:latest
+    container_name: mailhog
     ports:
       - 1025:1025
       - 8025:8025
   
   dashboard:
     image: mcr.microsoft.com/dotnet/aspire-dashboard:8.1
-    # image: snehapar9/aspire-dashboard:v19
-    # image: mcr.microsoft.com/dotnet/nightly/aspire-dashboard:latest
+    container_name: dashboard
     environment:
       - DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
     ports:

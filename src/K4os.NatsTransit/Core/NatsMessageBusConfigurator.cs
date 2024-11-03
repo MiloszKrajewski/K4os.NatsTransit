@@ -1,5 +1,7 @@
 ﻿using System.Reflection;
-using K4os.NatsTransit.Abstractions;
+using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Abstractions.Serialization;
+using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using MediatR;
@@ -23,13 +25,14 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         INatsConnection connection,
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
-        IExceptionSerializer exceptionSerializer,
+        IExceptionSerializer? exceptionSerializer,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer) =>
         new(
             loggerFactory,
             connection, context,
-            serializerFactory, exceptionSerializer,
+            serializerFactory,
+            exceptionSerializer,
             dispatcher,
             messageTracer,
             _actions, _targets, _sources);
@@ -49,26 +52,42 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     private void ContextAction<T>(Func<INatsJSContext, ValueTask<T>> action) =>
         ContextAction(js => action(js).AsTask());
-
-    public void Stream(string stream, string[] subjects) =>
-        ContextAction(js => js.CreateStreamAsync(new StreamConfig(stream, subjects)));
     
+    private void Stream(
+        string stream, string[] subjects, 
+        Action<StreamConfig>? configure)
+    {
+        var config = new StreamConfig(stream, subjects) {
+            Retention = StreamConfigRetention.Interest,
+        };
+        configure?.Invoke(config);
+        ContextAction(js => js.CreateStreamAsync(config));
+    }
+
+    public void Stream(string stream, string[] subjects) => Stream(stream, subjects, null);
+
     private void Consumer(
-        string stream, string consumer, string? suffix = null, string[]? subjects = null)
+        string stream, string consumer, 
+        string? suffix, string[]? subjects, 
+        Action<ConsumerConfig>? configure)
     {
         consumer = suffix is null ? consumer : $"{consumer}-{suffix}";
-        ContextAction(
-            context => context.CreateOrUpdateConsumerAsync(
-                stream, new ConsumerConfig {
-                    Name = consumer,
-                    DurableName = consumer,
-                    FilterSubjects = subjects,
-                    AckPolicy = ConsumerConfigAckPolicy.Explicit,
-                    AckWait = NatsConstants.AckTimeout,
-                    MaxDeliver = 10, 
-                }));
+        var config = new ConsumerConfig {
+            Name = consumer,
+            DurableName = consumer,
+            FilterSubjects = subjects,
+            AckPolicy = ConsumerConfigAckPolicy.Explicit,
+            AckWait = NatsConstants.AckTimeout,
+            MaxDeliver = 10,
+        };
+        configure?.Invoke(config);
+        ContextAction(context => context.CreateOrUpdateConsumerAsync(stream, config));
     }
     
+    private void Consumer(
+        string stream, string consumer, string? suffix = null, string[]? subjects = null) =>
+        Consumer(stream, consumer, suffix, subjects, null);
+
     public void Consumer(
         string stream, string consumer, string[]? subjects = null) =>
         Consumer(stream, consumer, null, subjects);
@@ -80,8 +99,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void QueryTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundAdapter<TRequest>? outboundAdapter = null,
+        InboundAdapter<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse> =>
         _targets.Add(
             new QueryNatsTargetHandler<TRequest, TResponse>.Config(
@@ -90,8 +109,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void RequestTarget<TRequest, TResponse>(
         string subject,
         TimeSpan? timeout = null,
-        IOutboundAdapter<TRequest>? outboundAdapter = null,
-        IInboundAdapter<TResponse>? inboundAdapter = null)
+        OutboundAdapter<TRequest>? outboundAdapter = null,
+        InboundAdapter<TResponse>? inboundAdapter = null)
         where TRequest: IRequest<TResponse> =>
         _targets.Add(
             new RequestNatsTargetHandler<TRequest, TResponse>.Config(
@@ -99,20 +118,20 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     public void CommandTarget<TCommand>(
         string subject,
-        IOutboundAdapter<TCommand>? outboundAdapter = null)
+        OutboundAdapter<TCommand>? outboundAdapter = null)
         where TCommand: IRequest =>
         _targets.Add(new CommandNatsTargetHandler<TCommand>.Config(subject, outboundAdapter));
 
     public void EventTarget<TEvent>(
         string subject,
-        IOutboundAdapter<TEvent>? outboundAdapter = null)
+        OutboundAdapter<TEvent>? outboundAdapter = null)
         where TEvent: INotification =>
         _targets.Add(new EventNatsTargetHandler<TEvent>.Config(subject, outboundAdapter));
 
     public void QuerySource<TRequest, TResponse>(
         string subject,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundAdapter<TRequest>? inboundAdapter = null,
+        OutboundAdapter<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
@@ -123,8 +142,8 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         string stream,
         string consumer,
         bool applicationSuffix = false,
-        IInboundAdapter<TRequest>? inboundAdapter = null,
-        IOutboundAdapter<TResponse>? outboundAdapter = null,
+        InboundAdapter<TRequest>? inboundAdapter = null,
+        OutboundAdapter<TResponse>? outboundAdapter = null,
         int concurrency = 1)
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
@@ -135,7 +154,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void CommandSource<TCommand>(
         string stream, string consumer,
         bool applicationSuffix = false,
-        IInboundAdapter<TCommand>? inboundAdapter = null,
+        InboundAdapter<TCommand>? inboundAdapter = null,
         int concurrency = 1)
         where TCommand: IRequest =>
         _sources.Add(
@@ -146,7 +165,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void EventSource<TEvent>(
         string stream, string consumer,
         bool applicationSuffix = true,
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundAdapter<TEvent>? inboundAdapter = null,
         int concurrency = 1
     ) where TEvent: INotification =>
         _sources.Add(
@@ -156,7 +175,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     public void EventListener<TEvent>(
         string subject,
-        IInboundAdapter<TEvent>? inboundAdapter = null,
+        InboundAdapter<TEvent>? inboundAdapter = null,
         int concurrency = 1) where TEvent: INotification =>
         _sources.Add(
             new EventNatsListenerHandler<TEvent>.Config(

@@ -1,10 +1,12 @@
-﻿using System.Runtime.ExceptionServices;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace K4os.NatsTransit.Extensions;
 
 public static class ExceptionExtensions
 {
+    [DoesNotReturn]
     public static T Rethrow<T>(this T exception)
         where T: Exception
     {

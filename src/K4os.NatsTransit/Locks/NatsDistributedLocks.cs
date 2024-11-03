@@ -1,4 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions;
+﻿using K4os.NatsTransit.Abstractions.DistributedLocks;
 using K4os.NatsTransit.Extensions;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
