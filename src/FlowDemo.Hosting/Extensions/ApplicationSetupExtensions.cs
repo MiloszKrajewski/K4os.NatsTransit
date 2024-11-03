@@ -85,6 +85,7 @@ public static class ApplicationSetupExtensions
             .WithLogging()
             .WithMetrics(
                 x => x
+                    .AddOtlpExporter(e => e.Endpoint = telemetryEndpoint)
                     .AddRuntimeInstrumentation()
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
@@ -92,6 +93,7 @@ public static class ApplicationSetupExtensions
                     .AddMeter(NatsToolboxMetrics.Meter.Name))
             .WithTracing(
                 x => x
+                    .AddOtlpExporter(e => e.Endpoint = telemetryEndpoint)
                     .SetSampler<AlwaysOnSampler>()
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
@@ -104,10 +106,6 @@ public static class ApplicationSetupExtensions
                         ScopedMessageDispatcher.ActivitySource.Name,
                         NatsToolboxTracing.ActivitySource.Name
                     ));
-        services.ConfigureOpenTelemetryMeterProvider(
-            m => m.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));
-        services.ConfigureOpenTelemetryTracerProvider(
-            t => t.AddOtlpExporter(z => z.Endpoint = telemetryEndpoint));
         services.AddHealthChecks().AddCheck("default", () => HealthCheckResult.Healthy());
         services.ConfigureHttpClientDefaults(h => h.AddStandardResilienceHandler());
 
@@ -170,8 +168,8 @@ public static class ApplicationSetupExtensions
         services.AddSingleton<NatsJSOpts>();
         services.AddSingleton<NatsConnection>();
         services.AddSingleton<NatsJSContext>();
-        services.AddSingleton<INatsConnection, NatsConnection>();
-        services.AddSingleton<INatsJSContext, NatsJSContext>();
+        services.AddSingleton<INatsConnection>(p => p.GetRequiredService<NatsConnection>());
+        services.AddSingleton<INatsJSContext>(p => p.GetRequiredService<NatsJSContext>());
     }
 
     public static void ConfigureMessageBus(
@@ -179,8 +177,8 @@ public static class ApplicationSetupExtensions
         Action<IFluentNats> configure) =>
         ConfigureMessageBus(webApplicationBuilder.Services, configure);
 
-    private static void ConfigureMessageBus(
-        IServiceCollection services,
+    public static void ConfigureMessageBus(
+        this IServiceCollection services,
         Action<IFluentNats> configure)
     {
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();

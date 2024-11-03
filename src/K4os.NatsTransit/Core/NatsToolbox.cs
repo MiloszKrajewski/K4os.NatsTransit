@@ -35,15 +35,14 @@ public class NatsToolbox
         INatsConnection connection,
         INatsJSContext jetStream,
         INatsSerializerFactory serializerFactory,
+        IExceptionSerializer? exceptionSerializer = null,
         INatsMessageTracer? messageTracer = null)
     {
         _loggerFactory = loggerFactory;
         _connection = connection;
         _jetStream = jetStream;
         _serializerFactory = serializerFactory;
-        _exceptionSerializer =
-            serializerFactory.GetExceptionSerializer() ??
-            DumbExceptionSerializer.Instance;
+        _exceptionSerializer = exceptionSerializer ?? DumbExceptionSerializer.Instance;
         _eventObserver = new ObservableEvent<INotification>();
         _tracing = new NatsToolboxTracing(messageTracer ?? NullMessageTracer.Instance);
         _metrics = new NatsToolboxMetrics();

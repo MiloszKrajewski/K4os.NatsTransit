@@ -9,11 +9,9 @@ public interface INatsMessageBusConfigurator
     
     void Stream(string stream, string[] subjects);
 
-    void Consumer(
-        string stream, string consumer, string[]? subjects = null);
+    void Consumer(string stream, string consumer, string[]? subjects = null);
 
-    void Consumer(
-        string stream, string consumer, bool applicationSuffix, string[]? subjects = null);
+    void Consumer(string stream, string consumer, bool applicationSuffix, string[]? subjects = null);
 
     void QueryTarget<TRequest, TResponse>(
         string subject,

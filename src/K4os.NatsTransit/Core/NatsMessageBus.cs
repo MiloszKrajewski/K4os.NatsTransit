@@ -2,7 +2,6 @@
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Patterns;
-using K4os.NatsTransit.Targets;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -20,6 +19,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
     private INatsSourceHandler[]? _sources;
     private readonly NatsTargetSelector _targets;
     private readonly IMessageDispatcher _dispatcher;
+    private Func<object, CancellationToken, Task<object?>>? _publisher;
 
     private readonly TaskCompletionSource _started = new();
     private readonly CancellationTokenSource _cts;
@@ -29,6 +29,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         INatsConnection connection,
         INatsJSContext jetStream,
         INatsSerializerFactory serializerFactory,
+        IExceptionSerializer? exceptionSerializer,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer,
         IEnumerable<INatsContextAction> actions,
@@ -39,7 +40,8 @@ public class NatsMessageBus: IHostedService, IMessageBus
         var toolbox = _toolbox = new NatsToolbox(
             loggerFactory,
             connection, jetStream,
-            serializerFactory,  
+            serializerFactory,
+            exceptionSerializer,
             messageTracer);
         _dispatcher = dispatcher;
         _actions = actions.ToArray();
@@ -47,20 +49,24 @@ public class NatsMessageBus: IHostedService, IMessageBus
         _targets = new NatsTargetSelector(targets.Select(s => s.CreateHandler(toolbox)));
         _cts = new CancellationTokenSource();
     }
+    
+    public Task<object?> Dispatch(object message, CancellationToken token = default) => 
+        Interlocked.CompareExchange(ref _publisher, null, null) is { } publisher 
+            ? publisher(message, token) 
+            : WaitForStartupThenPublishMessage(message, token);
 
-    public void WaitForStartup()
-    {
-        if (_started.Task.IsCompletedSuccessfully)
-            return;
-
-        throw new TimeoutException("Service bus has not been started yet");
-    }
-
-    public Task<object?> Dispatch(object message, CancellationToken token = default)
+    private Task<object?> PublishMessage(object message, CancellationToken token)
     {
         ArgumentNullException.ThrowIfNull(message, nameof(message));
-        WaitForStartup();
-        return _targets.FindTarget(message).Handle(token, message);
+        var target = _targets.FindTarget(message);
+        return target.Handle(token, message);
+    }
+
+    private async Task<object?> WaitForStartupThenPublishMessage(object message, CancellationToken token)
+    {
+        await _started.Task;
+        Interlocked.CompareExchange(ref _publisher, PublishMessage, null);
+        return await _publisher(message, token);
     }
 
     [SuppressMessage("ReSharper", "MethodHasAsyncOverload")]
@@ -69,7 +75,7 @@ public class NatsMessageBus: IHostedService, IMessageBus
         TimeSpan? timeout = null,
         CancellationToken token = default)
     {
-        WaitForStartup();
+        await _started.Task;
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(token, _cts.Token);
         using var capture = new Capture<object>(predicate);
         using var subscription = _toolbox.Events.Subscribe(capture);

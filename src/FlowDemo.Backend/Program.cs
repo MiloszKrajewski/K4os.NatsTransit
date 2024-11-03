@@ -29,6 +29,7 @@ builder.ConfigureMessageBus(
             .EmitsEvents<OrderRejectedEvent>("order-rejected")
             .EmitsEvents<OrderCancelledEvent>("order-cancelled")
             .RespondsToQueries<GetOrderQuery, OrderResponse>("get-order-by-id")
+            // .HandlesRequests<GetOrderQuery, OrderResponse>("get-order-by-id")
             .ConsumesAllCommands()
             .ConsumesAllEvents();
 

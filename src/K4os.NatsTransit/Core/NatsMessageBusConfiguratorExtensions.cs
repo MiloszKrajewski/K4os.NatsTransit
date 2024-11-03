@@ -23,6 +23,7 @@ public static class NatsMessageBusConfiguratorExtensions
                     p.GetRequiredService<INatsConnection>(),
                     p.GetRequiredService<INatsJSContext>(),
                     p.GetRequiredService<INatsSerializerFactory>(),
+                    p.GetService<IExceptionSerializer>(),
                     p.GetRequiredService<IMessageDispatcher>(),
                     p.GetService<INatsMessageTracer>());
             });

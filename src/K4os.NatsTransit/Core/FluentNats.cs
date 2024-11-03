@@ -44,6 +44,12 @@ public class FluentNatsTopic: IFluentNatsTopic
         _configurator.CommandTarget<TCommand>($"{_topicName}.commands.{commandName}");
         return this;
     }
+    
+    public IFluentNatsTopic SendsRequests<TRequest, TResponse>(string requestName) where TRequest: IRequest<TResponse>
+    {
+        _configurator.RequestTarget<TRequest, TResponse>($"{_topicName}.requests.{requestName}");
+        return this;
+    }
 
     public IFluentNatsTopic SendsQueries<TRequest, TResponse>(
         string queryName)
@@ -82,8 +88,7 @@ public class FluentNatsTopic: IFluentNatsTopic
             throw new ArgumentException("At least one event name must be provided.");
 
         var subjects = eventNames.Select(en => $"{_topicName}.events.{en}");
-        foreach (var subject in subjects)
-            _configurator.EventListener<INotification>(subject);
+        foreach (var subject in subjects) _configurator.EventListener<INotification>(subject);
         return this;
     }
 
@@ -91,8 +96,19 @@ public class FluentNatsTopic: IFluentNatsTopic
         string queryName, int concurrency = 1)
         where TRequest: IRequest<TResponse>
     {
-        _configurator.QuerySource<TRequest, TResponse>(
-            $"{_topicName}.queries.{queryName}", null, null, concurrency);
+        var subject = $"{_topicName}.queries.{queryName}";
+        _configurator.QuerySource<TRequest, TResponse>(subject, null, null, concurrency);
         return this;
     }
+    
+    public IFluentNatsTopic HandlesRequests<TRequest, TResponse>(
+        string consumer, string requestName, int concurrency = 1)
+        where TRequest: IRequest<TResponse>
+    {
+        var subject = $"{_topicName}.requests.{requestName}";
+        _configurator.Consumer(_topicName, consumer, false, [subject]);
+        _configurator.RequestSource<TRequest, TResponse>(subject, consumer, false, null, null, concurrency);
+        return this;
+    }
+
 }

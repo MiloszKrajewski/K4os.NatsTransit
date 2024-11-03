@@ -25,12 +25,14 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         INatsConnection connection,
         INatsJSContext context,
         INatsSerializerFactory serializerFactory,
+        IExceptionSerializer? exceptionSerializer,
         IMessageDispatcher dispatcher,
         INatsMessageTracer? messageTracer) =>
         new(
             loggerFactory,
             connection, context,
             serializerFactory,
+            exceptionSerializer,
             dispatcher,
             messageTracer,
             _actions, _targets, _sources);
@@ -50,26 +52,42 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     private void ContextAction<T>(Func<INatsJSContext, ValueTask<T>> action) =>
         ContextAction(js => action(js).AsTask());
-
-    public void Stream(string stream, string[] subjects) =>
-        ContextAction(js => js.CreateStreamAsync(new StreamConfig(stream, subjects)));
     
+    private void Stream(
+        string stream, string[] subjects, 
+        Action<StreamConfig>? configure)
+    {
+        var config = new StreamConfig(stream, subjects) {
+            Retention = StreamConfigRetention.Interest,
+        };
+        configure?.Invoke(config);
+        ContextAction(js => js.CreateStreamAsync(config));
+    }
+
+    public void Stream(string stream, string[] subjects) => Stream(stream, subjects, null);
+
     private void Consumer(
-        string stream, string consumer, string? suffix = null, string[]? subjects = null)
+        string stream, string consumer, 
+        string? suffix, string[]? subjects, 
+        Action<ConsumerConfig>? configure)
     {
         consumer = suffix is null ? consumer : $"{consumer}-{suffix}";
-        ContextAction(
-            context => context.CreateOrUpdateConsumerAsync(
-                stream, new ConsumerConfig {
-                    Name = consumer,
-                    DurableName = consumer,
-                    FilterSubjects = subjects,
-                    AckPolicy = ConsumerConfigAckPolicy.Explicit,
-                    AckWait = NatsConstants.AckTimeout,
-                    MaxDeliver = 10, 
-                }));
+        var config = new ConsumerConfig {
+            Name = consumer,
+            DurableName = consumer,
+            FilterSubjects = subjects,
+            AckPolicy = ConsumerConfigAckPolicy.Explicit,
+            AckWait = NatsConstants.AckTimeout,
+            MaxDeliver = 10,
+        };
+        configure?.Invoke(config);
+        ContextAction(context => context.CreateOrUpdateConsumerAsync(stream, config));
     }
     
+    private void Consumer(
+        string stream, string consumer, string? suffix = null, string[]? subjects = null) =>
+        Consumer(stream, consumer, suffix, subjects, null);
+
     public void Consumer(
         string stream, string consumer, string[]? subjects = null) =>
         Consumer(stream, consumer, null, subjects);
