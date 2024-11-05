@@ -1,6 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions.Serialization;
-using K4os.NatsTransit.Core;
-using K4os.NatsTransit.Extensions;
+﻿using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Serialization;
 using MediatR;
@@ -36,9 +34,8 @@ public class EventNatsTargetHandler<TEvent>:
 
     private static string GetActivityName(Config config)
     {
-        var eventType = typeof(TEvent).GetFriendlyName();
         var subject = config.Subject;
-        return $"Event<{eventType}>({subject})";
+        return $"Event({subject}).Send";
     }
 
     public override async Task Handle(CancellationToken token, TEvent @event)

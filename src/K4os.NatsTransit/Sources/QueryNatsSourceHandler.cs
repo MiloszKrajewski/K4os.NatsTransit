@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions.MessageBus;
-using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -51,10 +50,8 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
 
     private static string GetActivityName(Config config)
     {
-        var requestType = typeof(TRequest).Name;
-        var responseType = typeof(TResponse).Name;
         var subject = config.Subject;
-        return $"Subscribe<{requestType},{responseType}>({subject})";
+        return $"Query({subject}).Subscribe";
     }
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher) => 

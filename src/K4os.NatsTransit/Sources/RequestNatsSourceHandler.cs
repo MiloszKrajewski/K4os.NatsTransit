@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions.MessageBus;
-using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -55,11 +54,9 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
 
     private static string GetActivityName(Config config)
     {
-        var requestType = typeof(TRequest).GetFriendlyName();
-        var responseType = typeof(TResponse).GetFriendlyName();
         var streamName = config.Stream;
         var consumerName = config.Consumer;
-        return $"Consume<{requestType},{responseType}>({streamName}/{consumerName}))";
+        return $"Request({streamName}/{consumerName}).Consume";
     }
 
     private static string GetReplyToSubject<TPayload>(NatsJSMsg<TPayload> payload) =>

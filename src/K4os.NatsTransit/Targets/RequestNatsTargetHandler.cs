@@ -1,7 +1,5 @@
 ﻿using K4os.NatsTransit.Abstractions.MessageBus;
-using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
-using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Serialization;
 using MediatR;
@@ -41,10 +39,8 @@ public class RequestNatsTargetHandler<TRequest, TResponse>:
 
     private static string GetActivityName(Config config)
     {
-        var requestType = typeof(TRequest).GetFriendlyName();
-        var responseType = typeof(TResponse).GetFriendlyName();
         var subject = config.Subject;
-        return $"Request<{requestType},{responseType}>({subject})";
+        return $"Request({subject}).Send";
     }
 
     public override async Task<TResponse> Handle(CancellationToken token, TRequest request)

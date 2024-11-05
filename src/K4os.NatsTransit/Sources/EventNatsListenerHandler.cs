@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions.MessageBus;
-using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -48,9 +47,8 @@ public class EventNatsListenerHandler<TEvent>:
 
     private static string GetActivityName(Config config)
     {
-        var eventName = typeof(TEvent).GetFriendlyName();
         var subject = config.Subject;
-        return $"Listen<{eventName}>({subject})";
+        return $"Event({subject}).Listen";
     }
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher) => 

@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using K4os.NatsTransit.Abstractions.MessageBus;
-using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
@@ -50,10 +49,9 @@ public class EventNatsSourceHandler<TEvent>:
 
     private static string GetActivityName(Config config)
     {
-        var eventType = typeof(TEvent).GetFriendlyName();
         var streamName = config.Stream;
         var consumerName = config.Consumer;
-        return $"Consume<{eventType}>({streamName}/{consumerName})";
+        return $"Event({streamName}/{consumerName}).Consume";
     }
 
     public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher) => 

@@ -1,6 +1,4 @@
-﻿using K4os.NatsTransit.Abstractions.Serialization;
-using K4os.NatsTransit.Core;
-using K4os.NatsTransit.Extensions;
+﻿using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Serialization;
 using MediatR;
@@ -36,9 +34,8 @@ public class CommandNatsTargetHandler<TCommand>:
 
     private static string GetActivityName(Config config)
     {
-        var commandType = typeof(TCommand).GetFriendlyName();
         var subject = config.Subject;
-        return $"Command<{commandType}>({subject})";
+        return $"Command({subject}).Send";
     }
 
     public override async Task Handle(CancellationToken token, TCommand command)
