@@ -3,6 +3,7 @@ using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Serialization;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Primitives;

@@ -1,2 +1,2 @@
-NATS.Client.Core
+Microsoft.Extensions.Primitives
 MediatR.Contracts

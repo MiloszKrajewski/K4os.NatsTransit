@@ -1,4 +1,4 @@
-﻿namespace K4os.NatsTransit.Abstractions.Serialization;
+﻿namespace K4os.NatsTransit.Serialization;
 
 public interface INatsSerializerFactory
 {

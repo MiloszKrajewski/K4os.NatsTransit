@@ -45,10 +45,10 @@ services.ConfigureMessageBus(
         .WithTopic("stress")
         .SendsCommands<SampleCommand>("sample-command")
         .ConsumesCommands("commands", ["sample-command"], 16)
-        // .EmitsEvents<SampleEvent>("sample-event")
-        // .SendsQueries<SampleQuery, SampleResponse>("sample-query")
-        // .ConsumesEvents("events", ["sample-event"], 16)
-        // .RespondsToQueries<SampleQuery, SampleResponse>("sample-query", 16)
+        .EmitsEvents<SampleEvent>("sample-event")
+        .SendsQueries<SampleQuery, SampleResponse>("sample-query")
+        .ConsumesEvents("events", ["sample-event"], 16)
+        .RespondsToQueries<SampleQuery, SampleResponse>("sample-query", 16)
 );
 
 services.AddHostedService<SendingService>();
@@ -60,7 +60,7 @@ var logger = loggerFactory.CreateLogger("Program");
 var hosted = provider.GetServices<IHostedService>().ToArray();
 await Task.WhenAll(hosted.Select(s => s.StartAsync(default)));
 
-await Statistics.WaitForSilence(logger, TimeSpan.FromSeconds(60));
+await Statistics.WaitForSilence(logger, TimeSpan.FromSeconds(10));
 
 await Task.WhenAll(hosted.Select(s => s.StopAsync(default)));
 logger.LogInformation("Done");

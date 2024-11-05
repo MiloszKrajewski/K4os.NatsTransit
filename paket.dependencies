@@ -7,6 +7,7 @@ nuget Microsoft.Extensions.DependencyInjection.Abstractions
 nuget Microsoft.Extensions.Logging
 nuget Microsoft.Extensions.Logging.Abstractions
 nuget Microsoft.Extensions.Hosting
+nuget Microsoft.Extensions.Primitives
 nuget Microsoft.Extensions.Http.Resilience
 
 nuget Microsoft.AspNetCore.OpenApi

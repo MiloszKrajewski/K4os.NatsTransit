@@ -2,6 +2,7 @@
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Serialization;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 using NATS.Client.JetStream;
@@ -18,21 +19,6 @@ public static class NatsConsumer
         where TRequest: notnull =>
         new(toolbox, streamName, consumerName, events, deserializer);
 }
-
-// private Activity? OnTrace<TPayload>(NatsJSMsg<TPayload> message) => 
-//     _toolbox.ReceiveActivity(_activityName, message.Headers, _hasResponse);
-//
-// protected override Task<TResponse?> OnHandle<TPayload>(
-//     CancellationToken token, IMessageDispatcher dispatcher, NatsJSMsg<TPayload> payload, TRequest message) => 
-//     dispatcher.ForkDispatch<TRequest, TResponse>(message, token);
-//
-// protected override Task OnFailure<TPayload>(
-//     CancellationToken token, IMessageDispatcher context, NatsJSMsg<TPayload> payload, Exception error)
-// {
-//     Log.LogError(error, "Failed to process {RequestType} in {ActivityName}", _requestType, ActivityName);
-//     return Task.CompletedTask;
-// }
-
 
 public class NatsConsumer<TContext, TRequest, TResponse>
     where TRequest: notnull

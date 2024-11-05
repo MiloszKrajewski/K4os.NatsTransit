@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
+using K4os.NatsTransit.Configuration;
 using K4os.NatsTransit.Patterns;
+using K4os.NatsTransit.Serialization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;

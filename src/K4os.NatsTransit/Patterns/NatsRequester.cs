@@ -1,6 +1,7 @@
 ﻿using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Serialization;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Patterns;

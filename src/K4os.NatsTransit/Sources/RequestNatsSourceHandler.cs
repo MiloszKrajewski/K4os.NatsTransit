@@ -5,6 +5,7 @@ using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Patterns;
+using K4os.NatsTransit.Serialization;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;

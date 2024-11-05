@@ -14,8 +14,7 @@ internal static class TypeExtensions
 	/// Type distance cache. It should Concurrent dictionary but it is not available
 	/// on all flavors of Portable Class Library.
 	/// </summary>
-	private static readonly ConcurrentDictionary<(Type, Type), int> 
-		TypeDistanceMap = new();
+	private static readonly ConcurrentDictionary<(Type, Type), int> TypeDistanceMap = new();
 
 	/// <summary>Checks if child type inherits (or implements) from parent.</summary>
 	/// <param name="child">The child.</param>

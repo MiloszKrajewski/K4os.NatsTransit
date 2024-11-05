@@ -1,4 +1,6 @@
-﻿namespace K4os.NatsTransit.Core;
+﻿using K4os.NatsTransit.Core;
+
+namespace K4os.NatsTransit.Configuration;
 
 public class NatsContextAction: INatsContextAction
 {

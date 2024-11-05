@@ -1,13 +1,14 @@
-﻿using K4os.NatsTransit.Abstractions.Serialization;
+﻿using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Serialization;
 using MediatR;
 
-namespace K4os.NatsTransit.Abstractions.MessageBus;
+namespace K4os.NatsTransit.Configuration;
 
 public interface INatsMessageBusConfigurator
 {
     void Application(string name);
     
-    void Stream(string stream, string[] subjects);
+    void Stream(string stream, string[] subjects, StreamType type);
 
     void Consumer(string stream, string consumer, string[]? subjects = null);
 

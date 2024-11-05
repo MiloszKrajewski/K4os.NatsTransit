@@ -7,7 +7,7 @@ namespace FlowDemo.Stress.Handlers;
 
 public class SendingService: BackgroundService
 {
-    private static readonly TimeSpan Burst = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan Burst = TimeSpan.FromSeconds(5);
     private const double SendRateLimit = 150_000;
     private const int Threads = 16;
 

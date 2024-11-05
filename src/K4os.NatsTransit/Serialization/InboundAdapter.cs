@@ -1,6 +1,8 @@
-﻿using NATS.Client.Core;
+﻿using K4os.NatsTransit.Abstractions.Serialization;
+using K4os.NatsTransit.Extensions;
+using NATS.Client.Core;
 
-namespace K4os.NatsTransit.Abstractions.Serialization;
+namespace K4os.NatsTransit.Serialization;
 
 public class InboundAdapter<T>
 {

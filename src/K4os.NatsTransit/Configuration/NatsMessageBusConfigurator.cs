@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Threading.Tasks;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
+using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Patterns;
+using K4os.NatsTransit.Serialization;
 using K4os.NatsTransit.Sources;
 using K4os.NatsTransit.Targets;
 using MediatR;
@@ -13,7 +13,7 @@ using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 
-namespace K4os.NatsTransit.Core;
+namespace K4os.NatsTransit.Configuration;
 
 public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 {
@@ -46,7 +46,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         ArgumentException.ThrowIfNullOrWhiteSpace(topAssemblyName);
         return topAssemblyName.Replace(".", "-").ToLower();
     }
-    
+
     public void Application(string name) => _applicationName = name;
     public string ApplicationName => _applicationName;
 
@@ -55,9 +55,9 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
 
     private void ContextAction<T>(Func<INatsJSContext, ValueTask<T>> action) =>
         ContextAction(js => action(js).AsTask());
-    
+
     private void Stream(
-        string stream, string[] subjects, 
+        string stream, string[] subjects,
         Action<StreamConfig>? configure)
     {
         var config = new StreamConfig(stream, subjects) {
@@ -67,11 +67,17 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         ContextAction(js => js.CreateStreamAsync(config));
     }
 
-    public void Stream(string stream, string[] subjects) => Stream(stream, subjects, null);
+    public void Stream(string stream, string[] subjects, StreamType streamType)
+    {
+        var retention = streamType == StreamType.Commands 
+            ? StreamConfigRetention.Workqueue
+            : StreamConfigRetention.Interest;
+        Stream(stream, subjects, c => c.Retention = retention);
+    }
 
     private void Consumer(
-        string stream, string consumer, 
-        string? suffix, string[]? subjects, 
+        string stream, string consumer,
+        string? suffix, string[]? subjects,
         Action<ConsumerConfig>? configure)
     {
         consumer = suffix is null ? consumer : $"{consumer}-{suffix}";
@@ -86,7 +92,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         configure?.Invoke(config);
         ContextAction(context => context.CreateOrUpdateConsumerAsync(stream, config));
     }
-    
+
     private void Consumer(
         string stream, string consumer, string? suffix = null, string[]? subjects = null) =>
         Consumer(stream, consumer, suffix, subjects, null);
@@ -94,7 +100,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     public void Consumer(
         string stream, string consumer, string[]? subjects = null) =>
         Consumer(stream, consumer, null, subjects);
-    
+
     public void Consumer(
         string stream, string consumer, bool applicationSuffix, string[]? subjects = null) =>
         Consumer(stream, consumer, applicationSuffix ? _applicationName : null, subjects);
@@ -151,7 +157,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         where TRequest: IRequest<TResponse> =>
         _sources.Add(
             new RequestNatsSourceHandler<TRequest, TResponse>.Config(
-                stream, ConsumerName(consumer, applicationSuffix), 
+                stream, ConsumerName(consumer, applicationSuffix),
                 inboundAdapter, outboundAdapter, concurrency));
 
     public void CommandSource<TCommand>(
@@ -162,7 +168,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
         where TCommand: IRequest =>
         _sources.Add(
             new CommandNatsSourceHandler<TCommand>.Config(
-                stream, ConsumerName(consumer, applicationSuffix), 
+                stream, ConsumerName(consumer, applicationSuffix),
                 inboundAdapter, concurrency));
 
     public void EventSource<TEvent>(
@@ -173,7 +179,7 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
     ) where TEvent: INotification =>
         _sources.Add(
             new EventNatsSourceHandler<TEvent>.Config(
-                stream, ConsumerName(consumer, applicationSuffix), 
+                stream, ConsumerName(consumer, applicationSuffix),
                 inboundAdapter, concurrency));
 
     public void EventListener<TEvent>(
@@ -184,7 +190,6 @@ public class NatsMessageBusConfigurator: INatsMessageBusConfigurator
             new EventNatsListenerHandler<TEvent>.Config(
                 subject, inboundAdapter, concurrency));
 
-
-    private string ConsumerName(string consumer, bool applicationSuffix) => 
+    private string ConsumerName(string consumer, bool applicationSuffix) =>
         applicationSuffix ? $"{consumer}-{_applicationName}" : consumer;
 }

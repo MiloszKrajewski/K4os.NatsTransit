@@ -9,5 +9,6 @@ public class SampleCommandHandler: IRequestHandler<SampleCommand>
     {
         Statistics.OnMessageReceived();
         return Task.CompletedTask;
+        // return Task.Delay(50, cancellationToken);
     }
 }

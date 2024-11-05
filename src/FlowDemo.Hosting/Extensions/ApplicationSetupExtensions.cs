@@ -5,9 +5,11 @@ using K4os.KnownTypes;
 using K4os.KnownTypes.SystemTextJson;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
+using K4os.NatsTransit.Configuration;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.OpenTelemetry;
+using K4os.NatsTransit.Serialization;
 using K4os.Xpovoc.Abstractions;
 using K4os.Xpovoc.Core.Db;
 using K4os.Xpovoc.PgSql;
@@ -179,7 +181,7 @@ public static class ApplicationSetupExtensions
 
     public static void ConfigureMessageBus(
         this IServiceCollection services,
-        Action<IFluentNats> configure)
+        Action<FluentNats> configure)
     {
         services.AddSingleton<INatsSerializerFactory, SystemJsonNatsSerializerFactory>();
         services.AddSingleton<IExceptionSerializer, DumbExceptionSerializer>();

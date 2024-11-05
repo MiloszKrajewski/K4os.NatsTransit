@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using K4os.NatsTransit.Abstractions.MessageBus;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Extensions;
+using K4os.NatsTransit.Serialization;
 using Microsoft.Extensions.Primitives;
 using NATS.Client.Core;
 using NATS.Client.JetStream;

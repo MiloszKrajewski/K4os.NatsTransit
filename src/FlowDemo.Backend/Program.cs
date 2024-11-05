@@ -4,6 +4,7 @@ using FlowDemo.Handlers;
 using FlowDemo.Hosting.Extensions;
 using FlowDemo.Messages;
 using K4os.NatsTransit.Abstractions.MessageBus;
+using K4os.NatsTransit.Configuration;
 using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);

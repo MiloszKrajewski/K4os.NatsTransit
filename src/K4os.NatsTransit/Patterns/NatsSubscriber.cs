@@ -2,40 +2,11 @@
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Serialization;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
 
 namespace K4os.NatsTransit.Patterns;
-
-// protected virtual Activity? OnTrace(NatsHeaders? headers) => null;
-// // _toolbox.ReceiveActivity(_activityName, message.Headers, _hasResponse);
-//
-// protected abstract Task<TResponse?> OnHandle<TPayload>(
-//     CancellationToken token, TContext context, 
-//     NatsMsg<TPayload> payload, TRequest message);
-//
-// protected virtual Task OnSuccess<TPayload>(
-//     CancellationToken token, TContext context, 
-//     NatsMsg<TPayload> payload, TRequest request, TResponse? response) =>
-//     Task.CompletedTask;
-//
-// protected virtual Task OnFailure<TPayload>(
-//     CancellationToken token, TContext context, NatsMsg<TPayload> payload, Exception error) =>
-//     Task.CompletedTask;
-
-// public IDisposable Subscribe(CancellationToken token, IMessageDispatcher dispatcher) =>
-//     Subscribe(token, dispatcher, _concurrency);
-//
-// protected override Task<TResponse?> OnHandle<TPayload>(
-//     CancellationToken token, IMessageDispatcher dispatcher, NatsMsg<TPayload> payload, TRequest message) => 
-//     dispatcher.ForkDispatch<TRequest, TResponse>(message, token);
-//
-// protected override Task OnFailure<TPayload>(
-//     CancellationToken token, IMessageDispatcher context, NatsMsg<TPayload> payload, Exception error)
-// {
-//     Log.LogError(error, "Failed to process message");
-//     return Task.CompletedTask;
-// }
 
 public static class NatsSubscriber
 {
