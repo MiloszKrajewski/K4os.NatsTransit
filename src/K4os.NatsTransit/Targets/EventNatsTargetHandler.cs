@@ -40,8 +40,8 @@ public class EventNatsTargetHandler<TEvent>:
 
     public override async Task Handle(CancellationToken token, TEvent @event)
     {
-        using var _ = _toolbox.Tracing.SendingScope(_activityName, false);
-        await _publisher.Publish(token, _subject, @event);
+        using var span = _toolbox.Tracing.SendingScope(_activityName, false);
+        await _publisher.Publish(token, span, _subject, @event);
         _toolbox.Metrics.MessageSent(_subject);
     }
 }

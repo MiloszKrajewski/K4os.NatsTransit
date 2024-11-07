@@ -1,4 +1,5 @@
-﻿using K4os.NatsTransit.Abstractions.Serialization;
+﻿using System.Diagnostics;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Serialization;
@@ -20,7 +21,7 @@ public class NatsRequester<TRequest, TResponse>
 {
     private readonly NatsToolbox _toolbox;
     private readonly TimeSpan _timeout;
-    private readonly Func<CancellationToken, string, TRequest, Task<TResponse>> _requester;
+    private readonly Func<CancellationToken, Activity?, string, TRequest, Task<TResponse>> _requester;
 
     public NatsRequester(
         NatsToolbox toolbox, TimeSpan timeout, 
@@ -29,16 +30,17 @@ public class NatsRequester<TRequest, TResponse>
         _toolbox = toolbox;
         _timeout = timeout;
         _requester = (serializer.Unpack(), deserializer.Unpack()) switch {
-            ((var (s, o), null), (var (d, i), null)) => (t, n, m) => Request(t, n, m, s, o, d, i),
-            ((null, var (s, o)), (var (d, i), null)) => (t, n, m) => Request(t, n, m, s, o, d, i),
-            ((var (s, o), null), (null, var (d, i))) => (t, n, m) => Request(t, n, m, s, o, d, i),
-            ((null, var (s, o)), (null, var (d, i))) => (t, n, m) => Request(t, n, m, s, o, d, i),
+            ((var (s, o), null), (var (d, i), null)) => (t, a, n, m) => Request(t, a, n, m, s, o, d, i),
+            ((null, var (s, o)), (var (d, i), null)) => (t, a, n, m) => Request(t, a, n, m, s, o, d, i),
+            ((var (s, o), null), (null, var (d, i))) => (t, a, n, m) => Request(t, a, n, m, s, o, d, i),
+            ((null, var (s, o)), (null, var (d, i))) => (t, a, n, m) => Request(t, a, n, m, s, o, d, i),
             _ => throw new InvalidOperationException("Misconfigured serializer")
         };
     }
     
     private async Task<TResponse> Request<TRequestPayload, TResponsePayload>(
         CancellationToken token,
+        Activity? activity,
         string subject, TRequest request,
         INatsSerialize<TRequestPayload> serializer,
         IOutboundTransformer<TRequest, TRequestPayload> outboundTransformer,
@@ -51,11 +53,15 @@ public class NatsRequester<TRequest, TResponse>
         var replySubject = $"$reply.{Guid.NewGuid():N}-{DateTime.UtcNow.Ticks:x16}";
         var subscription = _toolbox.SubscribeOne(token, replySubject, _timeout, deserializer);
         var responseTask = /* no await */subscription.FirstOrDefault(token);
+        activity?.OnSending(subject, request);
         await _toolbox.Request(token, subject, request, replySubject, serializer, outboundTransformer);
-        var response = await responseTask;
-        return _toolbox.Unpack(response, inboundTransformer);
+        var message = await responseTask;
+        activity?.OnReceived(message);
+        var response = _toolbox.Unpack(message, inboundTransformer);
+        activity?.OnUnpacked(response);
+        return response;
     }
     
-    public Task<TResponse> Request(CancellationToken token, string subject, TRequest request) =>
-        _requester(token, subject, request);
+    public Task<TResponse> Request(CancellationToken token, Activity? activity, string subject, TRequest request) =>
+        _requester(token, activity, subject, request);
 }

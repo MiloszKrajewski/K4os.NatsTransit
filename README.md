@@ -4,7 +4,7 @@
 
 # Usage
 
-TBD
+![Example](./doc/flow-demo.svg)
 
 # Build
 

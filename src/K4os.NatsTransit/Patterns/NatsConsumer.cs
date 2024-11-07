@@ -2,6 +2,7 @@
 using K4os.Async.Toys;
 using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Serialization;
 using Microsoft.Extensions.Logging;
 using NATS.Client.Core;
@@ -39,15 +40,15 @@ public class NatsConsumer<TContext, TRequest, TResponse>
         Activity? OnTrace(TContext context, NatsHeaders? headers);
 
         Task<TResponse?> OnHandle<TPayload>(
-            CancellationToken token, TContext context,
+            CancellationToken token, Activity? activity, TContext context,
             NatsJSMsg<TPayload> payload, TRequest message);
 
         Task OnSuccess<TPayload>(
-            CancellationToken token, TContext context,
+            CancellationToken token, Activity? activity, TContext context,
             NatsJSMsg<TPayload> payload, TRequest request, TResponse? response);
 
         Task OnFailure<TPayload>(
-            CancellationToken token, TContext context,
+            CancellationToken token, Activity? activity, TContext context,
             NatsJSMsg<TPayload> payload, Exception error);
     }
 
@@ -89,22 +90,25 @@ public class NatsConsumer<TContext, TRequest, TResponse>
         var messages = await _toolbox.ConsumeMany(token, _streamName, _consumerName, deserializer);
         await foreach (var message in messages.WithCancellation(token))
         {
-            using var _ = _events.OnTrace(context, message.Headers);
+            using var activity = _events.OnTrace(context, message.Headers);
             try
             {
+                activity?.OnReceived(_streamName, _consumerName, message);
                 var request = _toolbox.Unpack(message, transformer);
-                var done = _events.OnHandle(token, context, message, request);
+                activity?.OnUnpacked(request);
+                var done = _events.OnHandle(token, activity, context, message, request);
                 await message.WaitAndKeepAliveNoAck(done, token);
                 var response = await done;
                 await message.AckAsync(null, token);
-                await _events.OnSuccess(token, context, message, request, response);
+                await _events.OnSuccess(token, activity, context, message, request, response);
             }
             catch (Exception error)
             {
-                await _events.OnFailure(token, context, message, error);
+                activity?.OnException(error);
+                await _events.OnFailure(token, activity, context, message, error);
             }
         }
     }
-
+    
     public virtual void Dispose() => _disposables.Dispose();
 }

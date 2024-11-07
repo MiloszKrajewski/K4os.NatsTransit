@@ -23,8 +23,8 @@
   </PropertyGroup>
 
   <PropertyGroup Condition=" $(Configuration) == 'Release' ">
-    <!--
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!--
     <TreatWarningsAsErrors Condition=" '$(IsReleasing)' == 'true' ">true</TreatWarningsAsErrors>
     -->
     <Optimize>true</Optimize>

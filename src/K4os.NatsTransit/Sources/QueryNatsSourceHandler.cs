@@ -22,7 +22,7 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
     private readonly string _requestType;
     private readonly int _concurrency;
     private readonly NatsSubscriber<IMessageDispatcher, TRequest, Result<TResponse>> _consumer;
-    private readonly OutboundAdapter<TResponse> _serializer;
+    private readonly NatsResponder<TResponse> _responder;
 
     public record Config(
         string Subject,
@@ -44,8 +44,9 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _concurrency = config.Concurrency.NotLessThan(1);
         var subject = config.Subject;
         var deserializer = config.InboundAdapter ?? toolbox.GetInboundAdapter<TRequest>();
-        _serializer = config.OutboundAdapter ?? toolbox.GetOutboundAdapter<TResponse>();
+        var serializer = config.OutboundAdapter ?? toolbox.GetOutboundAdapter<TResponse>();
         _consumer = NatsSubscriber.Create(toolbox, subject, this, deserializer);
+        _responder = NatsResponder.Create(toolbox, serializer);
     }
 
     private static string GetActivityName(Config config)
@@ -61,21 +62,21 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         _toolbox.Tracing.ReceivedScope(_activityName, headers, true);
 
     public Task<Result<TResponse>> OnHandle<TPayload>(
-        CancellationToken token, IMessageDispatcher dispatcher,
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher,
         NatsMsg<TPayload> payload, TRequest message) =>
         _toolbox.Metrics.HandleScope(
             payload.Subject, 
             () => dispatcher.ForkDispatchWithResult<TRequest, TResponse>(message, token));
 
     public async Task OnSuccess<TPayload>(
-        CancellationToken token, IMessageDispatcher context, 
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher, 
         NatsMsg<TPayload> payload, TRequest request, Result<TResponse> response)
     {
         try
         {
             var sent = response switch {
-                { Error: { } e } => _toolbox.Respond(token, payload, e),
-                { Value: { } r } => _toolbox.Respond(token, payload, r, _serializer), // no responder implemented yet
+                { Error: { } e } => Respond(token, activity, payload, e),
+                { Value: { } r } => Respond(token, activity, payload, r),
                 _ => default
             };
             await sent;
@@ -86,8 +87,18 @@ public class QueryNatsSourceHandler<TRequest, TResponse>:
         }
     }
 
+    private ValueTask Respond<TPayload>(
+        CancellationToken token, Activity? activity, 
+        NatsMsg<TPayload> request, Exception error) => 
+        _responder.Respond(token, activity, request, error);
+
+    private ValueTask Respond<TPayload>(
+        CancellationToken token, Activity? activity, 
+        NatsMsg<TPayload> request, TResponse response) => 
+        _responder.Respond(token, activity, request, response);
+
     public Task OnFailure<TPayload>(
-        CancellationToken token, IMessageDispatcher context, 
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher, 
         NatsMsg<TPayload> payload, Exception error)
     {
         Log.LogError(error, "Failed to process request {RequestType} in {ActivityName}", _requestType, _activityName);

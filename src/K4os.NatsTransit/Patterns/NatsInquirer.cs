@@ -1,5 +1,7 @@
-﻿using K4os.NatsTransit.Abstractions.Serialization;
+﻿using System.Diagnostics;
+using K4os.NatsTransit.Abstractions.Serialization;
 using K4os.NatsTransit.Core;
+using K4os.NatsTransit.Extensions;
 using K4os.NatsTransit.Serialization;
 using NATS.Client.Core;
 
@@ -17,7 +19,7 @@ public class NatsInquirer<TRequest, TResponse>
 {
     private readonly NatsToolbox _toolbox;
     private readonly TimeSpan _timeout;
-    private readonly Func<CancellationToken, string, TRequest, Task<TResponse>> _inquirer;
+    private readonly Func<CancellationToken, Activity?, string, TRequest, Task<TResponse>> _inquirer;
 
     public NatsInquirer(
         NatsToolbox toolbox,
@@ -28,16 +30,17 @@ public class NatsInquirer<TRequest, TResponse>
         _toolbox = toolbox;
         _timeout = timeout;
         _inquirer = (serializer.Unpack(), deserializer.Unpack()) switch {
-            ((var (s, o), null), (var (d, i), null)) => (t, n, m) => Query(t, n, m, s, o, d, i),
-            ((null, var (s, o)), (var (d, i), null)) => (t, n, m) => Query(t, n, m, s, o, d, i),
-            ((var (s, o), null), (null, var (d, i))) => (t, n, m) => Query(t, n, m, s, o, d, i),
-            ((null, var (s, o)), (null, var (d, i))) => (t, n, m) => Query(t, n, m, s, o, d, i),
+            ((var (s, ot), null), (var (d, it), null)) => (t, a, n, m) => Query(t, a, n, m, s, ot, d, it),
+            ((null, var (s, ot)), (var (d, it), null)) => (t, a, n, m) => Query(t, a, n, m, s, ot, d, it),
+            ((var (s, ot), null), (null, var (d, it))) => (t, a, n, m) => Query(t, a, n, m, s, ot, d, it),
+            ((null, var (s, ot)), (null, var (d, it))) => (t, a, n, m) => Query(t, a, n, m, s, ot, d, it),
             _ => throw new InvalidOperationException("Misconfigured serializer")
         };
     }
 
     private async Task<TResponse> Query<TRequestPayload, TResponsePayload>(
         CancellationToken token,
+        Activity? activity,
         string subject,
         TRequest request,
         INatsSerialize<TRequestPayload> serializer,
@@ -45,11 +48,23 @@ public class NatsInquirer<TRequest, TResponse>
         INatsDeserialize<TResponsePayload> deserializer,
         IInboundTransformer<TResponsePayload, TResponse> inboundTransformer)
     {
-        var response = await _toolbox.Query(
-            token, subject, request, serializer, outboundTransformer, deserializer, _timeout);
-        return _toolbox.Unpack(response, inboundTransformer);
+        try
+        {
+            activity?.OnSending(subject, request);
+            var message = await _toolbox.Query(
+                token, subject, request, serializer, outboundTransformer, deserializer, _timeout);
+            activity?.OnReceived(message);
+            var response = _toolbox.Unpack(message, inboundTransformer);
+            activity?.OnUnpacked(response);
+            return response;
+        }
+        catch (Exception error)
+        {
+            activity?.OnException(error);
+            throw;
+        }
     }
-    
-    public Task<TResponse> Query(CancellationToken token, string subject, TRequest request) =>
-        _inquirer(token, subject, request);
+
+    public Task<TResponse> Query(CancellationToken token, Activity? activity, string subject, TRequest request) =>
+        _inquirer(token, activity, subject, request);
 }

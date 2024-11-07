@@ -73,22 +73,22 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
         _toolbox.Tracing.ReceivedScope(_activityName, headers, true);
 
     public Task<Result<TResponse>> OnHandle<TPayload>(
-        CancellationToken token, IMessageDispatcher dispatcher,
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher,
         NatsJSMsg<TPayload> payload, TRequest message) =>
         _toolbox.Metrics.HandleScope(
             payload.Subject,
             () => dispatcher.ForkDispatchWithResult<TRequest, TResponse>(message, token));
 
     public async Task OnSuccess<TPayload>(
-        CancellationToken token, IMessageDispatcher context, 
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher, 
         NatsJSMsg<TPayload> payload, TRequest request, Result<TResponse> response)
     {
         var replyTo = GetReplyToSubject(payload);
         try
         {
             var task = response switch {
-                { Error: { } e } => _toolbox.Respond(token, replyTo, e),
-                { Value: { } r } => _responder.Publish(token, replyTo, r),
+                { Error: { } e } => _responder.Publish(token, activity, replyTo, e),
+                { Value: { } r } => _responder.Publish(token, activity, replyTo, r),
                 _ => default
             };
             await task;
@@ -100,7 +100,7 @@ public class RequestNatsSourceHandler<TRequest, TResponse>:
     }
 
     public Task OnFailure<TPayload>(
-        CancellationToken token, IMessageDispatcher context, 
+        CancellationToken token, Activity? activity, IMessageDispatcher context, 
         NatsJSMsg<TPayload> payload, Exception error)
     {
         Log.LogError(error, "Failed to process request {RequestType} in {ActivityName}", _requestType, _activityName);

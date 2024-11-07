@@ -1,4 +1,5 @@
-﻿using K4os.NatsTransit.Core;
+﻿using System.Diagnostics;
+using K4os.NatsTransit.Core;
 using K4os.NatsTransit.Patterns;
 using K4os.NatsTransit.Serialization;
 using MediatR;
@@ -40,8 +41,8 @@ public class CommandNatsTargetHandler<TCommand>:
 
     public override async Task Handle(CancellationToken token, TCommand command)
     {
-        using var _ = _toolbox.Tracing.SendingScope(_activityName, false);
-        await _publisher.Publish(token, _subject, command);
+        using var span = _toolbox.Tracing.SendingScope(_activityName, false);
+        await _publisher.Publish(token, span, _subject, command);
         _toolbox.Metrics.MessageSent(_subject);
     }
 }

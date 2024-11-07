@@ -47,9 +47,9 @@ public class QueryNatsTargetHandler<TRequest, TResponse>:
 
     public override async Task<TResponse> Handle(CancellationToken token, TRequest request)
     {
-        using var _ = _toolbox.Tracing.SendingScope(_activityName, true);
+        using var activity = _toolbox.Tracing.SendingScope(_activityName, true);
         var response = await _toolbox.Metrics.RequestScope(
-            _subject, () => _requester.Query(token, _subject, request));
+            _subject, () => _requester.Query(token, activity, _subject, request));
         return response;
     }
 }

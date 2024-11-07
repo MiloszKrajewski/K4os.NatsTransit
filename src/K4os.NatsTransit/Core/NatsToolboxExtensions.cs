@@ -64,8 +64,8 @@ public static class NatsToolboxExtensions
         NatsMsg<TRequest> request, TResponse payload,
         OutboundAdapter<TResponse> serializer) =>
         serializer.Unpack() switch {
-            (var (s, a), null) => toolbox.Respond(token, request, payload, s, a),
-            (null, var (s, a)) => toolbox.Respond(token, request, payload, s, a),
+            (var (s, ot), null) => toolbox.Respond(token, request, payload, s, ot),
+            (null, var (s, ot)) => toolbox.Respond(token, request, payload, s, ot),
             _ => default // this will not happen as 'Unpack' guarantees one of the branches
         };
 

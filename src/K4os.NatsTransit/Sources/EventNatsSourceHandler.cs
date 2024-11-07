@@ -61,7 +61,7 @@ public class EventNatsSourceHandler<TEvent>:
         _toolbox.Tracing.ReceivedScope(_activityName, headers, false);
 
     public Task<object?> OnHandle<TPayload>(
-        CancellationToken token, IMessageDispatcher dispatcher,
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher,
         NatsJSMsg<TPayload> payload, TEvent message) =>
         _toolbox.Metrics.HandleScope(payload.Subject, () => HandleEvent(token, dispatcher, message));
 
@@ -72,12 +72,12 @@ public class EventNatsSourceHandler<TEvent>:
     }
 
     public Task OnSuccess<TPayload>(
-        CancellationToken token, IMessageDispatcher dispatcher, 
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher, 
         NatsJSMsg<TPayload> payload, TEvent request, object? response) => 
         Task.CompletedTask;
 
     public Task OnFailure<TPayload>(
-        CancellationToken token, IMessageDispatcher dispatcher, 
+        CancellationToken token, Activity? activity, IMessageDispatcher dispatcher, 
         NatsJSMsg<TPayload> payload, Exception error)
     {
         Log.LogError(error, "Failed to process event {EventType} in {ActivityName}", _eventType, _activityName);

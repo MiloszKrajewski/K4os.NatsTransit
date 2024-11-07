@@ -32,7 +32,7 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "order_id": "f367bc03-3217-48f3-8ff9-a62bfcffd053"
+  "order_id": "529f2e9b-e3ee-4251-8a82-8eae201aef99"
 }
 
 ### GetOrderQuery
@@ -42,6 +42,6 @@ Accept: application/json
 Content-Type: application/json
 
 {
-  "order_id": "f367bc03-3217-48f3-8ff9-a62bfcffd053"
+  "order_id": "529f2e9b-e3ee-4251-8a82-8eae201aef99"
 }
 
